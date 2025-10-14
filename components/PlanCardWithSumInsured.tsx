@@ -86,10 +86,25 @@ const PlanCardWithDropdown: React.FC<{
   const [selectedSumInsuredIndex, setSelectedSumInsuredIndex] = useState(0);
 
   const sumInsuredOptions = useMemo(() => {
-    if (!plan.amountDetail) return [];
+    if (!plan.amountDetail || plan.amountDetail.length === 0) return [];
     
     // Debug: Log the amountDetail structure to understand what makes entries different
     console.log('🔍 AmountDetail for plan:', plan.planData?.displayName, plan.amountDetail);
+    console.log('🔍 Original plan.payingAmount:', plan.payingAmount);
+    
+    // Check if the premiums in amountDetail make sense (not too high)
+    const hasValidPremiums = plan.amountDetail.some(detail => {
+      const premium = typeof detail.premiumAnnually === 'string' ? parseFloat(detail.premiumAnnually) : detail.premiumAnnually;
+      const sumInsured = detail.sumInsured;
+      // Premium should be reasonable (less than 10% of sum insured)
+      return premium && premium < (sumInsured * 0.1);
+    });
+    
+    // If premiums don't make sense, don't use amountDetail
+    if (!hasValidPremiums) {
+      console.log('⚠️ Invalid premiums in amountDetail, falling back to original plan data');
+      return [];
+    }
     
     // Show ALL variations instead of deduplicating
     // Each entry might be a different plan type/variation for the same sum insured
@@ -120,11 +135,14 @@ const PlanCardWithDropdown: React.FC<{
       if (aSum !== bSum) return aSum - bSum;
       return a.premium - b.premium;
     });
-  }, [plan.amountDetail]);
+  }, [plan.amountDetail, plan.payingAmount]);
 
   const selectedOption = sumInsuredOptions[selectedSumInsuredIndex];
   const selectedDetail = plan.amountDetail?.[selectedOption?.originalIndex || 0];
   const selectedPremium = selectedDetail?.premiumAnnually || plan.payingAmount;
+  
+  // Fallback: If no amountDetail options, use original plan data
+  const shouldShowOriginalPlan = sumInsuredOptions.length === 0;
 
   return (
     <Card className="hover:shadow-xl transition-all duration-300 border-l-4 overflow-hidden" 
@@ -154,8 +172,8 @@ const PlanCardWithDropdown: React.FC<{
                   </div>
                 </div>
                 
-                {/* Sum Insured Dropdown */}
-                {sumInsuredOptions.length > 1 && (
+                {/* Sum Insured Dropdown - only show if we have valid amountDetail options */}
+                {!shouldShowOriginalPlan && sumInsuredOptions.length > 1 && (
                   <div className="mb-3">
                     <div className="flex items-center space-x-3">
                       <span className="text-sm font-medium text-gray-700">Sum Insured:</span>
@@ -183,9 +201,12 @@ const PlanCardWithDropdown: React.FC<{
 
                 <div className="flex items-center space-x-2">
                   <Badge variant="secondary">
-                    {selectedDetail?.sumInsured 
-                      ? `₹${(selectedDetail.sumInsured / 10).toFixed(0)} Lakh Cover`
-                      : 'Cover Details'
+                    {shouldShowOriginalPlan 
+                      ? `₹${(plan.planData?.sumInsured || 0) / 100000} Lakh Cover`
+                      : (selectedDetail?.sumInsured 
+                          ? `₹${(selectedDetail.sumInsured / 10).toFixed(0)} Lakh Cover`
+                          : 'Cover Details'
+                        )
                     }
                   </Badge>
                   <Badge variant="outline">1 Year</Badge>
@@ -194,7 +215,7 @@ const PlanCardWithDropdown: React.FC<{
 
               <div className="text-right ml-4">
                 <div className="text-3xl font-bold mb-1" style={{ color: insurerInfo?.color }}>
-                  {formatCurrency(typeof selectedPremium === 'string' ? parseFloat(selectedPremium) : selectedPremium)}
+                  {formatCurrency(shouldShowOriginalPlan ? plan.payingAmount : (typeof selectedPremium === 'string' ? parseFloat(selectedPremium) : selectedPremium))}
                 </div>
                 <p className="text-sm text-muted-foreground">per year</p>
               </div>
