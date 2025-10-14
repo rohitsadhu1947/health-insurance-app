@@ -30,7 +30,7 @@ import { formatCurrency, formatNumber, INSURERS, SUM_INSURED_OPTIONS } from "@/l
 import { QuotePlan } from "@/lib/types";
 import { toast } from "sonner";
 import PlanCardWithSumInsured from "@/components/PlanCardWithSumInsured";
-import { createQuote } from "@/lib/api/services";
+import { createQuote, pollForQuotes } from "@/lib/api/services";
 
 export default function QuotesPage() {
   const router = useRouter();
@@ -150,19 +150,44 @@ export default function QuotesPage() {
       console.log('📤 Making API call with fieldData:', fieldData);
       
       // Fetch new quotes with the selected sum insured
-      const newQuote = await createQuote(fieldData);
+      const initialQuote = await createQuote(fieldData);
       
-      console.log('📥 Received API response:', newQuote);
+      console.log('📥 Received initial API response:', initialQuote);
       
-      if (newQuote && newQuote.quotePlans && newQuote.quotePlans.length > 0) {
-        // Update the store with new quotes and form data
-        setCurrentQuote(newQuote);
-        setUserFormData(updatedFormData);
-        console.log(`✅ Successfully updated quotes: ${newQuote.quotePlans.length} plans`);
-        toast.success(`Found ${newQuote.quotePlans.length} plans for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage!`);
+      if (!initialQuote || !initialQuote.id) {
+        console.log('⚠️ No quote ID received');
+        toast.error('Failed to create quote. Please try again.');
+        return;
+      }
+
+      // Update store with initial quote
+      setCurrentQuote(initialQuote);
+      setUserFormData(updatedFormData);
+      
+      // Start polling for quote results
+      console.log(`🔄 Starting to poll for quote ID: ${initialQuote.id}`);
+      
+      const finalQuote = await pollForQuotes(
+        initialQuote.id,
+        (updatedQuote) => {
+          console.log(`📊 Poll update: ${updatedQuote.quotePlans?.length || 0} plans`);
+          setCurrentQuote(updatedQuote);
+        },
+        20, // Max 20 attempts
+        3000 // Poll every 3 seconds
+      );
+      
+      console.log('✅ Polling complete. Final quote:', finalQuote);
+      
+      // Final update with results
+      setCurrentQuote(finalQuote);
+      
+      if (finalQuote && finalQuote.quotePlans && finalQuote.quotePlans.length > 0) {
+        console.log(`✅ Successfully received ${finalQuote.quotePlans.length} plans`);
+        toast.success(`Found ${finalQuote.quotePlans.length} plans for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage!`);
       } else {
-        console.log('⚠️ No quotes found in response:', newQuote);
-        toast.error('No quotes found for the selected coverage amount. Please try a different amount.');
+        console.log('⚠️ No quotes found after polling');
+        toast.warning(`No quotes available for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage. Try a different amount.`);
       }
     } catch (error) {
       console.error('❌ Error fetching quotes for new sum insured:', error);
