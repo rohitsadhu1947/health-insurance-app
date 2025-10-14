@@ -1,0 +1,18 @@
+# Quick Commands for Demo
+
+## Start Development Server
+npm run dev
+
+## Build for Production  
+npm run build
+
+## Start Production Server
+npm start
+
+## Port Configuration
+Default: http://localhost:3000
+
+## Environment
+UAT environment with live API integration
+All credentials pre-configured in .env.local
+
