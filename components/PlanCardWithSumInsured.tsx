@@ -36,15 +36,9 @@ export default function PlanCardWithSumInsured({
   const planGroups = useMemo(() => {
     const groups: { [key: string]: QuotePlan[] } = {};
     
-    // Debug: Log the first plan structure
-    if (plans.length > 0) {
-      console.log('Plan data structure:', plans[0]);
-      console.log('Plan planData:', plans[0].planData);
-    }
-    
     plans.forEach(plan => {
-      // Use internalName as the primary grouping key, fallback to displayName
-      const planKey = plan.planData.internalName || plan.planData.displayName || plan.planData.planName || `plan-${plan.planId}`;
+      // Use displayName as the primary grouping key (this groups same plan types together)
+      const planKey = plan.planData?.displayName || plan.planData?.internalName || plan.planData?.planName || `plan-${plan.planId}`;
       if (!groups[planKey]) {
         groups[planKey] = [];
       }
