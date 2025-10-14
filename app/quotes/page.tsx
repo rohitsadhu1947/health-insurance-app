@@ -26,18 +26,20 @@ import {
   Minus
 } from "lucide-react";
 import { useHealthInsuranceStore } from "@/lib/store";
-import { formatCurrency, formatNumber, INSURERS } from "@/lib/constants";
+import { formatCurrency, formatNumber, INSURERS, SUM_INSURED_OPTIONS } from "@/lib/constants";
 import { QuotePlan } from "@/lib/types";
 import { toast } from "sonner";
 import PlanCardWithSumInsured from "@/components/PlanCardWithSumInsured";
+import { getQuote } from "@/lib/api/services";
 
 export default function QuotesPage() {
   const router = useRouter();
-  const { currentQuote, selectedPlans, addToCompare, removeFromCompare, selectPlan } = useHealthInsuranceStore();
+  const { currentQuote, selectedPlans, addToCompare, removeFromCompare, selectPlan, userFormData, setIsLoading, setUserFormData, setCurrentQuote } = useHealthInsuranceStore();
   
   const [sortBy, setSortBy] = useState("premium-low");
   const [filterInsurer, setFilterInsurer] = useState("all");
   const [filteredPlans, setFilteredPlans] = useState<QuotePlan[]>([]);
+  const [selectedSumInsured, setSelectedSumInsured] = useState('500000'); // Default to 5L
 
 
   useEffect(() => {
@@ -98,6 +100,41 @@ export default function QuotesPage() {
 
   const isInComparison = (planId: number) => {
     return selectedPlans.some(p => p.planId === planId);
+  };
+
+  const handleSumInsuredChange = async (newSumInsured: string) => {
+    if (!userFormData) {
+      toast.error('Form data not available');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      toast.info(`Fetching quotes for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage...`);
+      
+      // Update form data with new sum insured
+      const updatedFormData = {
+        ...userFormData,
+        sumInsured: [newSumInsured]
+      };
+      
+      // Fetch new quotes with the selected sum insured
+      const newQuote = await getQuote(updatedFormData);
+      
+      if (newQuote && newQuote.quotePlans && newQuote.quotePlans.length > 0) {
+        // Update the store with new quotes and form data
+        setCurrentQuote(newQuote);
+        setUserFormData(updatedFormData);
+        toast.success(`Found ${newQuote.quotePlans.length} plans for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage!`);
+      } else {
+        toast.error('No quotes found for the selected coverage amount');
+      }
+    } catch (error) {
+      console.error('Error fetching quotes for new sum insured:', error);
+      toast.error('Failed to fetch quotes for the selected coverage amount');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Group plans by insurer
@@ -198,6 +235,25 @@ export default function QuotesPage() {
                       {uniqueInsurers.map(insurer => (
                         <SelectItem key={insurer} value={insurer}>
                           {INSURERS[insurer as keyof typeof INSURERS]?.name || insurer}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-muted-foreground">Sum Insured:</span>
+                  <Select value={selectedSumInsured} onValueChange={(value) => {
+                    setSelectedSumInsured(value);
+                    handleSumInsuredChange(value);
+                  }}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUM_INSURED_OPTIONS.slice(1, 7).map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

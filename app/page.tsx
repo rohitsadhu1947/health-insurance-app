@@ -30,7 +30,7 @@ export default function HomePage() {
     motherDOB: '',
     son: 0,
     daughter: 0,
-    sumInsured: ['500000', '1000000', '1500000'], // Default: 5L, 10L, 15L
+    sumInsured: ['500000'], // Default: 5L only
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,11 +49,7 @@ export default function HomePage() {
       return;
     }
 
-    // Check if at least one sum insured is selected
-    if (formData.sumInsured.length === 0) {
-      toast.error('Please select at least one coverage amount');
-      return;
-    }
+    // Sum insured is now defaulted to 5L, no need to validate selection
 
     try {
       setIsLoading(true);
@@ -417,46 +413,13 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Sum Insured Selection */}
+                {/* Sum Insured Selection - Hidden for now, defaulting to 5L */}
                 <div className="space-y-3 bg-gradient-to-br from-gray-50 to-purple-50/30 p-5 rounded-xl border border-gray-100">
-                  <Label className="text-sm font-semibold text-gray-800 flex items-center">
-                    Select Coverage Amounts *
-                    <span className="ml-2 text-xs text-gray-500 font-normal">(Select 1-3 options)</span>
+                  <Label className="text-sm font-semibold text-gray-800">
+                    Default Coverage Amount: ₹5 Lakh
                   </Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {SUM_INSURED_OPTIONS.slice(1, 7).map((option) => (
-                      <div key={option.value} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-white/60 transition-colors">
-                        <Checkbox
-                          id={`sum-${option.value}`}
-                          checked={formData.sumInsured.includes(option.value)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              // Add sum insured (max 3 selections)
-                              if (formData.sumInsured.length < 3) {
-                                setFormData({
-                                  ...formData,
-                                  sumInsured: [...formData.sumInsured, option.value].sort((a, b) => parseInt(a) - parseInt(b))
-                                });
-                              } else {
-                                toast.info('Maximum 3 coverage amounts allowed');
-                              }
-                            } else {
-                              // Remove sum insured
-                              setFormData({
-                                ...formData,
-                                sumInsured: formData.sumInsured.filter(v => v !== option.value)
-                              });
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`sum-${option.value}`} className="cursor-pointer text-sm font-medium">
-                          {option.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    💡 Select multiple amounts to compare coverage options in one go
+                  <p className="text-xs text-gray-500">
+                    💡 You can change the coverage amount on the quotes page
                   </p>
                 </div>
 

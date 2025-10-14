@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import { QuotePlan } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -83,66 +82,9 @@ const PlanCardWithDropdown: React.FC<{
   selectedPlansCount: number;
   maxComparisonPlans: number;
 }> = ({ plan, insurerInfo, insurer, onCompareToggle, onBuyNow, isInComparison, selectedPlansCount, maxComparisonPlans }) => {
-  const [selectedSumInsuredIndex, setSelectedSumInsuredIndex] = useState(0);
 
-  const sumInsuredOptions = useMemo(() => {
-    if (!plan.amountDetail || plan.amountDetail.length === 0) return [];
-    
-    // Debug: Log the amountDetail structure to understand what makes entries different
-    console.log('🔍 AmountDetail for plan:', plan.planData?.displayName, plan.amountDetail);
-    console.log('🔍 Original plan.payingAmount:', plan.payingAmount);
-    
-    // Check if the premiums in amountDetail make sense (not too high)
-    const hasValidPremiums = plan.amountDetail.some(detail => {
-      const premium = typeof detail.premiumAnnually === 'string' ? parseFloat(detail.premiumAnnually) : detail.premiumAnnually;
-      const sumInsured = detail.sumInsured;
-      // Premium should be reasonable (less than 10% of sum insured)
-      return premium && premium < (sumInsured * 0.1);
-    });
-    
-    // If premiums don't make sense, don't use amountDetail
-    if (!hasValidPremiums) {
-      console.log('⚠️ Invalid premiums in amountDetail, falling back to original plan data');
-      return [];
-    }
-    
-    // Show ALL variations instead of deduplicating
-    // Each entry might be a different plan type/variation for the same sum insured
-    return plan.amountDetail.map((detail, index) => {
-      const premium = typeof detail.premiumAnnually === 'string' ? parseFloat(detail.premiumAnnually) : detail.premiumAnnually;
-      
-      // Create a unique label that shows the difference
-      let label = `₹${(detail.sumInsured / 10).toFixed(0)} Lakh${detail.sumInsured >= 100 ? ' (₹1 Cr)' : ''}`;
-      
-      // Add plan variation indicator if there are multiple entries for same sum insured
-      const sameSumInsuredCount = plan.amountDetail.filter(d => d.sumInsured === detail.sumInsured).length;
-      if (sameSumInsuredCount > 1) {
-        const variationIndex = plan.amountDetail.filter(d => d.sumInsured === detail.sumInsured).indexOf(detail) + 1;
-        label += ` - Plan ${variationIndex}`;
-      }
-      
-      return {
-        index,
-        value: `${detail.sumInsured}_${index}`, // Make value unique
-        label,
-        premium,
-        originalIndex: index
-      };
-    }).sort((a, b) => {
-      // Sort by sum insured first, then by premium
-      const aSum = parseInt(a.value.split('_')[0]);
-      const bSum = parseInt(b.value.split('_')[0]);
-      if (aSum !== bSum) return aSum - bSum;
-      return a.premium - b.premium;
-    });
-  }, [plan.amountDetail, plan.payingAmount]);
-
-  const selectedOption = sumInsuredOptions[selectedSumInsuredIndex];
-  const selectedDetail = plan.amountDetail?.[selectedOption?.originalIndex || 0];
-  const selectedPremium = selectedDetail?.premiumAnnually || plan.payingAmount;
-  
-  // Fallback: If no amountDetail options, use original plan data
-  const shouldShowOriginalPlan = sumInsuredOptions.length === 0;
+  // Simplified: Always use original plan data, no amountDetail complexity
+  const selectedPremium = plan.payingAmount;
 
   return (
     <Card className="hover:shadow-xl transition-all duration-300 border-l-4 overflow-hidden" 
@@ -172,42 +114,10 @@ const PlanCardWithDropdown: React.FC<{
                   </div>
                 </div>
                 
-                {/* Sum Insured Dropdown - only show if we have valid amountDetail options */}
-                {!shouldShowOriginalPlan && sumInsuredOptions.length > 1 && (
-                  <div className="mb-3">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-sm font-medium text-gray-700">Sum Insured:</span>
-                      <Select 
-                        value={selectedSumInsuredIndex.toString()} 
-                        onValueChange={(value) => setSelectedSumInsuredIndex(parseInt(value))}
-                      >
-                        <SelectTrigger className="w-48">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sumInsuredOptions.map((option, index) => (
-                            <SelectItem key={option.value} value={index.toString()}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{option.label}</span>
-                                <span className="text-xs text-gray-500">₹{option.premium?.toLocaleString()}/year</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
 
                 <div className="flex items-center space-x-2">
                   <Badge variant="secondary">
-                    {shouldShowOriginalPlan 
-                      ? `₹${(plan.planData?.sumInsured || 0) / 100000} Lakh Cover`
-                      : (selectedDetail?.sumInsured 
-                          ? `₹${(selectedDetail.sumInsured / 10).toFixed(0)} Lakh Cover`
-                          : 'Cover Details'
-                        )
-                    }
+                    ₹{(plan.planData?.sumInsured || 0) / 100000} Lakh Cover
                   </Badge>
                   <Badge variant="outline">1 Year</Badge>
                 </div>
@@ -215,7 +125,7 @@ const PlanCardWithDropdown: React.FC<{
 
               <div className="text-right ml-4">
                 <div className="text-3xl font-bold mb-1" style={{ color: insurerInfo?.color }}>
-                  {formatCurrency(shouldShowOriginalPlan ? plan.payingAmount : (typeof selectedPremium === 'string' ? parseFloat(selectedPremium) : selectedPremium))}
+                  {formatCurrency(plan.payingAmount)}
                 </div>
                 <p className="text-sm text-muted-foreground">per year</p>
               </div>
@@ -223,7 +133,7 @@ const PlanCardWithDropdown: React.FC<{
 
             {/* Key Features */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              {selectedDetail?.coverages
+              {plan.planData.coverages
                 ?.filter(c => c.isSelected && c.displayName)
                 .slice(0, 4)
                 .map((coverage, idx) => (
@@ -232,17 +142,6 @@ const PlanCardWithDropdown: React.FC<{
                     <span className="text-sm text-muted-foreground">{coverage.displayName}</span>
                   </div>
                 ))}
-              {(!selectedDetail?.coverages || selectedDetail.coverages.length === 0) && 
-                plan.planData.coverages
-                  ?.filter(c => c.isSelected && c.displayName)
-                  .slice(0, 4)
-                  .map((coverage, idx) => (
-                    <div key={idx} className="flex items-start space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-muted-foreground">{coverage.displayName}</span>
-                    </div>
-                  ))
-              }
             </div>
 
             <Separator className="my-4" />
