@@ -88,35 +88,38 @@ const PlanCardWithDropdown: React.FC<{
   const sumInsuredOptions = useMemo(() => {
     if (!plan.amountDetail) return [];
     
-    // Group by sum insured and take the lowest premium for each sum insured
-    const groupedBySumInsured = plan.amountDetail.reduce((acc, detail, index) => {
-      const sumInsuredKey = detail.sumInsured.toString();
-      if (!acc[sumInsuredKey]) {
-        acc[sumInsuredKey] = {
-          index,
-          value: sumInsuredKey,
-          label: `₹${(detail.sumInsured / 10).toFixed(0)} Lakh${detail.sumInsured >= 100 ? ' (₹1 Cr)' : ''}`,
-          premium: typeof detail.premiumAnnually === 'string' ? parseFloat(detail.premiumAnnually) : detail.premiumAnnually,
-          originalIndex: index
-        };
-      } else {
-        // If we find a lower premium for the same sum insured, use that instead
-        const currentPremium = typeof detail.premiumAnnually === 'string' ? parseFloat(detail.premiumAnnually) : detail.premiumAnnually;
-        if (currentPremium < acc[sumInsuredKey].premium) {
-          acc[sumInsuredKey] = {
-            ...acc[sumInsuredKey],
-            premium: currentPremium,
-            originalIndex: index
-          };
-        }
+    // Debug: Log the amountDetail structure to understand what makes entries different
+    console.log('🔍 AmountDetail for plan:', plan.planData?.displayName, plan.amountDetail);
+    
+    // Show ALL variations instead of deduplicating
+    // Each entry might be a different plan type/variation for the same sum insured
+    return plan.amountDetail.map((detail, index) => {
+      const premium = typeof detail.premiumAnnually === 'string' ? parseFloat(detail.premiumAnnually) : detail.premiumAnnually;
+      
+      // Create a unique label that shows the difference
+      let label = `₹${(detail.sumInsured / 10).toFixed(0)} Lakh${detail.sumInsured >= 100 ? ' (₹1 Cr)' : ''}`;
+      
+      // Add plan variation indicator if there are multiple entries for same sum insured
+      const sameSumInsuredCount = plan.amountDetail.filter(d => d.sumInsured === detail.sumInsured).length;
+      if (sameSumInsuredCount > 1) {
+        const variationIndex = plan.amountDetail.filter(d => d.sumInsured === detail.sumInsured).indexOf(detail) + 1;
+        label += ` - Plan ${variationIndex}`;
       }
-      return acc;
-    }, {} as Record<string, any>);
-
-    // Convert back to array and sort by sum insured
-    return Object.values(groupedBySumInsured).sort((a: any, b: any) => 
-      parseInt(a.value) - parseInt(b.value)
-    );
+      
+      return {
+        index,
+        value: `${detail.sumInsured}_${index}`, // Make value unique
+        label,
+        premium,
+        originalIndex: index
+      };
+    }).sort((a, b) => {
+      // Sort by sum insured first, then by premium
+      const aSum = parseInt(a.value.split('_')[0]);
+      const bSum = parseInt(b.value.split('_')[0]);
+      if (aSum !== bSum) return aSum - bSum;
+      return a.premium - b.premium;
+    });
   }, [plan.amountDetail]);
 
   const selectedOption = sumInsuredOptions[selectedSumInsuredIndex];
@@ -166,7 +169,10 @@ const PlanCardWithDropdown: React.FC<{
                         <SelectContent>
                           {sumInsuredOptions.map((option, index) => (
                             <SelectItem key={option.value} value={index.toString()}>
-                              {option.label}
+                              <div className="flex flex-col">
+                                <span className="font-medium">{option.label}</span>
+                                <span className="text-xs text-gray-500">₹{option.premium?.toLocaleString()}/year</span>
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
