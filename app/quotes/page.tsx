@@ -30,11 +30,11 @@ import { formatCurrency, formatNumber, INSURERS, SUM_INSURED_OPTIONS } from "@/l
 import { QuotePlan } from "@/lib/types";
 import { toast } from "sonner";
 import PlanCardWithSumInsured from "@/components/PlanCardWithSumInsured";
-import { getQuote } from "@/lib/api/services";
+import { createQuote } from "@/lib/api/services";
 
 export default function QuotesPage() {
   const router = useRouter();
-  const { currentQuote, selectedPlans, addToCompare, removeFromCompare, selectPlan, userFormData, setIsLoading, setUserFormData, setCurrentQuote } = useHealthInsuranceStore();
+  const { currentQuote, selectedPlans, addToCompare, removeFromCompare, selectPlan, userFormData, isLoading, setIsLoading, setUserFormData, setCurrentQuote } = useHealthInsuranceStore();
   
   const [sortBy, setSortBy] = useState("premium-low");
   const [filterInsurer, setFilterInsurer] = useState("all");
@@ -108,8 +108,15 @@ export default function QuotesPage() {
       return;
     }
 
+    // Don't proceed if we're already loading
+    if (isLoading) {
+      console.log('Already loading, skipping sum insured change');
+      return;
+    }
+
     try {
       setIsLoading(true);
+      console.log(`🔄 Fetching quotes for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage...`);
       toast.info(`Fetching quotes for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage...`);
       
       // Update form data with new sum insured
@@ -118,20 +125,48 @@ export default function QuotesPage() {
         sumInsured: [newSumInsured]
       };
       
+      // Convert date from YYYY-MM-DD to DD/MM/YYYY
+      const formatDate = (date: string) => {
+        if (!date) return '';
+        const [year, month, day] = date.split('-');
+        return `${day}/${month}/${year}`;
+      };
+
+      // Build fieldData array for production API format
+      const fieldData = [
+        { id: 'fullName', parentProperty: 'basicDetails', value: updatedFormData.fullName },
+        { id: 'phoneNumber', parentProperty: 'basicDetails', value: updatedFormData.phoneNumber },
+        { id: 'email', parentProperty: 'basicDetails', value: updatedFormData.email },
+        { id: 'pincode', parentProperty: 'basicDetails', value: updatedFormData.pincode },
+        { id: 'selfDOB', parentProperty: 'familyMembers', value: formatDate(updatedFormData.selfDOB) },
+        { id: 'spouseDOB', parentProperty: 'familyMembers', value: formatDate(updatedFormData.spouseDOB) },
+        { id: 'fatherDOB', parentProperty: 'familyMembers', value: formatDate(updatedFormData.fatherDOB) },
+        { id: 'motherDOB', parentProperty: 'familyMembers', value: formatDate(updatedFormData.motherDOB) },
+        { id: 'son', parentProperty: 'familyMembers', value: updatedFormData.son },
+        { id: 'daughter', parentProperty: 'familyMembers', value: updatedFormData.daughter },
+        { id: 'sumInsured', parentProperty: 'basicDetails', value: updatedFormData.sumInsured[0] },
+      ];
+      
+      console.log('📤 Making API call with fieldData:', fieldData);
+      
       // Fetch new quotes with the selected sum insured
-      const newQuote = await getQuote(updatedFormData);
+      const newQuote = await createQuote(fieldData);
+      
+      console.log('📥 Received API response:', newQuote);
       
       if (newQuote && newQuote.quotePlans && newQuote.quotePlans.length > 0) {
         // Update the store with new quotes and form data
         setCurrentQuote(newQuote);
         setUserFormData(updatedFormData);
+        console.log(`✅ Successfully updated quotes: ${newQuote.quotePlans.length} plans`);
         toast.success(`Found ${newQuote.quotePlans.length} plans for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage!`);
       } else {
-        toast.error('No quotes found for the selected coverage amount');
+        console.log('⚠️ No quotes found in response:', newQuote);
+        toast.error('No quotes found for the selected coverage amount. Please try a different amount.');
       }
     } catch (error) {
-      console.error('Error fetching quotes for new sum insured:', error);
-      toast.error('Failed to fetch quotes for the selected coverage amount');
+      console.error('❌ Error fetching quotes for new sum insured:', error);
+      toast.error(`Failed to fetch quotes for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage. Please try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -243,12 +278,16 @@ export default function QuotesPage() {
 
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-muted-foreground">Sum Insured:</span>
-                  <Select value={selectedSumInsured} onValueChange={(value) => {
-                    setSelectedSumInsured(value);
-                    handleSumInsuredChange(value);
-                  }}>
+                  <Select 
+                    value={selectedSumInsured} 
+                    onValueChange={(value) => {
+                      setSelectedSumInsured(value);
+                      handleSumInsuredChange(value);
+                    }}
+                    disabled={isLoading}
+                  >
                     <SelectTrigger className="w-48">
-                      <SelectValue />
+                      <SelectValue placeholder={isLoading ? "Loading..." : "Select amount"} />
                     </SelectTrigger>
                     <SelectContent>
                       {SUM_INSURED_OPTIONS.slice(1, 7).map(option => (
@@ -258,6 +297,12 @@ export default function QuotesPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {isLoading && (
+                    <div className="flex items-center space-x-1 text-xs text-blue-600">
+                      <div className="animate-spin h-3 w-3 border border-blue-600 border-t-transparent rounded-full"></div>
+                      <span>Loading...</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="ml-auto">
