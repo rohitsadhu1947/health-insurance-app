@@ -87,15 +87,40 @@ const PlanCardWithDropdown: React.FC<{
 
   const sumInsuredOptions = useMemo(() => {
     if (!plan.amountDetail) return [];
-    return plan.amountDetail.map((detail, index) => ({
-      index,
-      value: detail.sumInsured.toString(),
-      label: `₹${(detail.sumInsured / 10).toFixed(0)} Lakh${detail.sumInsured >= 100 ? ' (₹1 Cr)' : ''}`,
-      premium: detail.premiumAnnually
-    }));
+    
+    // Group by sum insured and take the lowest premium for each sum insured
+    const groupedBySumInsured = plan.amountDetail.reduce((acc, detail, index) => {
+      const sumInsuredKey = detail.sumInsured.toString();
+      if (!acc[sumInsuredKey]) {
+        acc[sumInsuredKey] = {
+          index,
+          value: sumInsuredKey,
+          label: `₹${(detail.sumInsured / 10).toFixed(0)} Lakh${detail.sumInsured >= 100 ? ' (₹1 Cr)' : ''}`,
+          premium: typeof detail.premiumAnnually === 'string' ? parseFloat(detail.premiumAnnually) : detail.premiumAnnually,
+          originalIndex: index
+        };
+      } else {
+        // If we find a lower premium for the same sum insured, use that instead
+        const currentPremium = typeof detail.premiumAnnually === 'string' ? parseFloat(detail.premiumAnnually) : detail.premiumAnnually;
+        if (currentPremium < acc[sumInsuredKey].premium) {
+          acc[sumInsuredKey] = {
+            ...acc[sumInsuredKey],
+            premium: currentPremium,
+            originalIndex: index
+          };
+        }
+      }
+      return acc;
+    }, {} as Record<string, any>);
+
+    // Convert back to array and sort by sum insured
+    return Object.values(groupedBySumInsured).sort((a: any, b: any) => 
+      parseInt(a.value) - parseInt(b.value)
+    );
   }, [plan.amountDetail]);
 
-  const selectedDetail = plan.amountDetail?.[selectedSumInsuredIndex];
+  const selectedOption = sumInsuredOptions[selectedSumInsuredIndex];
+  const selectedDetail = plan.amountDetail?.[selectedOption?.originalIndex || 0];
   const selectedPremium = selectedDetail?.premiumAnnually || plan.payingAmount;
 
   return (
@@ -139,8 +164,8 @@ const PlanCardWithDropdown: React.FC<{
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {sumInsuredOptions.map((option) => (
-                            <SelectItem key={option.index} value={option.index.toString()}>
+                          {sumInsuredOptions.map((option, index) => (
+                            <SelectItem key={option.value} value={index.toString()}>
                               {option.label}
                             </SelectItem>
                           ))}
