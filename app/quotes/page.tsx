@@ -132,19 +132,39 @@ export default function QuotesPage() {
         return `${day}/${month}/${year}`;
       };
 
-      // Build fieldData array for production API format
+      // Build fieldData array for production API format (same as main form)
       const fieldData = [
         { id: 'fullName', parentProperty: 'basicDetails', value: updatedFormData.fullName },
         { id: 'phoneNumber', parentProperty: 'basicDetails', value: updatedFormData.phoneNumber },
-        { id: 'email', parentProperty: 'basicDetails', value: updatedFormData.email },
-        { id: 'pincode', parentProperty: 'basicDetails', value: updatedFormData.pincode },
-        { id: 'selfDOB', parentProperty: 'familyMembers', value: formatDate(updatedFormData.selfDOB) },
-        { id: 'spouseDOB', parentProperty: 'familyMembers', value: formatDate(updatedFormData.spouseDOB) },
-        { id: 'fatherDOB', parentProperty: 'familyMembers', value: formatDate(updatedFormData.fatherDOB) },
-        { id: 'motherDOB', parentProperty: 'familyMembers', value: formatDate(updatedFormData.motherDOB) },
-        { id: 'son', parentProperty: 'familyMembers', value: updatedFormData.son },
-        { id: 'daughter', parentProperty: 'familyMembers', value: updatedFormData.daughter },
-        { id: 'sumInsured', parentProperty: 'basicDetails', value: updatedFormData.sumInsured[0] },
+        { id: 'emailAddress', parentProperty: 'basicDetails', value: updatedFormData.email },
+        { id: 'pincode', parentProperty: 'communicationAddress', value: updatedFormData.pincode },
+        { id: 'gender', parentProperty: 'proposerDetails', value: 'male' }, // Default
+        { id: 'isIndian', parentProperty: 'proposerDetails', value: 'Yes' },
+        
+        // Self
+        { id: 'self', parentProperty: 'proposerDetails', value: updatedFormData.selfDOB ? 'Yes' : '' },
+        ...(updatedFormData.selfDOB ? [{ id: 'dOBSelf', parentProperty: 'proposerDetails', value: formatDate(updatedFormData.selfDOB) }] : []),
+        
+        // Spouse
+        { id: 'spouse', parentProperty: 'insuredMember1', value: updatedFormData.spouseDOB ? 'Yes' : '' },
+        ...(updatedFormData.spouseDOB ? [{ id: 'dOBSpouse', parentProperty: 'insuredMember1', value: formatDate(updatedFormData.spouseDOB) }] : []),
+        
+        // Father
+        { id: 'father', parentProperty: 'insuredMember2', value: updatedFormData.fatherDOB ? 'Yes' : '' },
+        ...(updatedFormData.fatherDOB ? [{ id: 'dOBFather', parentProperty: 'insuredMember2', value: formatDate(updatedFormData.fatherDOB) }] : []),
+        
+        // Mother
+        { id: 'mother', parentProperty: 'insuredMember3', value: updatedFormData.motherDOB ? 'Yes' : '' },
+        ...(updatedFormData.motherDOB ? [{ id: 'dOBMother', parentProperty: 'insuredMember3', value: formatDate(updatedFormData.motherDOB) }] : []),
+        
+        // Son/Daughter counters
+        { id: 'son', parentProperty: 'insuredMember4', value: updatedFormData.son > 0 ? 'Yes' : '' },
+        { id: 'sonCounter', parentProperty: 'insuredCount', value: updatedFormData.son || 0 },
+        { id: 'daughter', parentProperty: 'insuredMember5', value: updatedFormData.daughter > 0 ? 'Yes' : '' },
+        { id: 'daughterCounter', parentProperty: 'insuredCount', value: updatedFormData.daughter || 0 },
+        
+        // Sum Insured - this is the key difference
+        { id: 'sumInsured', parentProperty: 'policyDetails', value: updatedFormData.sumInsured[0] },
       ];
       
       console.log('📤 Making API call with fieldData:', fieldData);
