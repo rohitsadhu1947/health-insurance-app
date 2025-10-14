@@ -11,10 +11,20 @@ export interface QuoteField {
   parentProperty: string;
 }
 
+export interface AmountDetail {
+  gst: string | number;
+  sumInsured: number;
+  basePremium: string | number;
+  premiumMonthly: string | number;
+  premiumAnnually: string | number;
+  coverages?: Coverage[];
+}
+
 export interface QuotePlan {
   companyId: number;
   planId: number;
   payingAmount: number;
+  amountDetail?: AmountDetail[];
   planData: {
     internalName: string;
     displayName: string;
@@ -26,8 +36,17 @@ export interface QuotePlan {
 }
 
 export interface Coverage {
-  sumInsured: string;
-  coveragesValue: AddOn[];
+  sumInsured?: string;
+  coveragesValue?: AddOn[];
+  // Also support direct coverage format from API
+  internalName?: string;
+  displayName?: string;
+  value?: any;
+  amount?: number | null;
+  available?: boolean;
+  isSelected?: boolean;
+  readOnly?: boolean;
+  defaultSelected?: boolean;
 }
 
 export interface AddOn {
