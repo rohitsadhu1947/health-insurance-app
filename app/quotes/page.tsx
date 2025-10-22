@@ -163,10 +163,16 @@ export default function QuotesPage() {
     p.planData?.companyInternalName || 'Unknown'
   ).filter(Boolean) || [])].filter((ins) => ins !== 'Unknown');
   
+  // Calculate insurer count - use the actual data or show 0 to prevent showing wrong count during transitions
+  const insurerCount = currentQuote?.quotePlans && currentQuote.quotePlans.length > 0 
+    ? uniqueInsurers.length 
+    : 0;
+  
   // Debug: Log insurer information
   console.log('🔍 Insurer Debug Info:', {
     filteredPlansCount: filteredPlans.length,
     uniqueInsurers,
+    insurerCount,
     samplePlan: filteredPlans[0] ? {
       companyInternalName: filteredPlans[0].planData?.companyInternalName,
       displayName: filteredPlans[0].planData?.displayName
@@ -304,13 +310,15 @@ export default function QuotesPage() {
               <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
                 Find Your Perfect Health Plan
               </h1>
-              <p className="text-base text-gray-600 mb-3">
-                Compare <span className="font-bold text-blue-600">{filteredPlans.length} premium plans</span> from <span className="font-bold text-blue-600">{uniqueInsurers.length}</span> trusted insurers
-              </p>
-              {/* Insurer Pills - Only show when data is loaded */}
-              {!isDataLoading && uniqueInsurers.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {uniqueInsurers.map((ins) => {
+              {/* Only show plan/insurer counts and pills when data is fully loaded */}
+              {!isDataLoading && insurerCount > 0 ? (
+                <>
+                  <p className="text-base text-gray-600 mb-3">
+                    Compare <span className="font-bold text-blue-600">{filteredPlans.length} premium plans</span> from <span className="font-bold text-blue-600">{insurerCount}</span> trusted insurers
+                  </p>
+                  {/* Insurer Pills */}
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {uniqueInsurers.map((ins) => {
                   // Count plans from ALL plans (not filtered), so count is always accurate
                   // Use companyInternalName ONLY to match
                   const planCount = currentQuote?.quotePlans?.filter(p => 
@@ -351,7 +359,12 @@ export default function QuotesPage() {
                     </button>
                   );
                 })}
-                </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-base text-gray-600 mb-3">
+                  Loading quotes...
+                </p>
               )}
             </div>
 
