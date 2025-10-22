@@ -308,9 +308,10 @@ export default function QuotesPage() {
               <p className="text-base text-gray-600 mb-3">
                 Compare <span className="font-bold text-blue-600">{filteredPlans.length} premium plans</span> from <span className="font-bold text-blue-600">{uniqueInsurers.length}</span> trusted insurers
               </p>
-              {/* Insurer Pills */}
-              <div className="flex flex-wrap gap-2 mt-3">
-                {uniqueInsurers.map((ins) => {
+              {/* Insurer Pills - Only show when data is loaded */}
+              {!isDataLoading && uniqueInsurers.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {uniqueInsurers.map((ins) => {
                   // Count plans from ALL plans (not filtered), so count is always accurate
                   const planCount = currentQuote?.quotePlans?.filter(p => 
                     (p.planData?.companyInternalName || p.planData?.displayName || 'Unknown Insurer') === ins
@@ -350,7 +351,8 @@ export default function QuotesPage() {
                     </button>
                   );
                 })}
-              </div>
+                </div>
+              )}
             </div>
 
             {selectedPlans.length > 0 && (
