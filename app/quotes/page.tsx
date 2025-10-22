@@ -158,11 +158,10 @@ export default function QuotesPage() {
   }, {} as Record<string, QuotePlan[]>);
 
   // Get unique insurers from ALL plans (not filtered), so pills always show all options
+  // Use companyInternalName ONLY - don't fall back to displayName (which is the plan name)
   const uniqueInsurers = [...new Set(currentQuote?.quotePlans?.map(p => 
-    p.planData?.companyInternalName || 
-    p.planData?.displayName || 
-    'Unknown Insurer'
-  ) || [])].filter(Boolean);
+    p.planData?.companyInternalName || 'Unknown'
+  ).filter(Boolean) || [])].filter((ins) => ins !== 'Unknown');
   
   // Debug: Log insurer information
   console.log('🔍 Insurer Debug Info:', {
@@ -313,8 +312,9 @@ export default function QuotesPage() {
                 <div className="flex flex-wrap gap-2 mt-3">
                   {uniqueInsurers.map((ins) => {
                   // Count plans from ALL plans (not filtered), so count is always accurate
+                  // Use companyInternalName ONLY to match
                   const planCount = currentQuote?.quotePlans?.filter(p => 
-                    (p.planData?.companyInternalName || p.planData?.displayName || 'Unknown Insurer') === ins
+                    p.planData?.companyInternalName === ins
                   ).length || 0;
                   
                   return (
