@@ -55,18 +55,38 @@ const PlanCardWithSumInsured: React.FC<PlanCardWithSumInsuredProps> = ({
                         plan.planData?.internalName || 
                         'Health Plan';
         
-        // Get available add-ons for current sum insured
-        // Show all available add-ons regardless of amount (some have null amount but are still available)
-        const availableAddOns = displayCoverages?.filter((coverage: any) => 
-          coverage.available && coverage.displayName && coverage.internalName
-        ) || [];
-        
         // Get current plan state
         const currentPlanState = planAddOnStates[plan.planId] || { showAddOns: false, selectedAddOns: {} };
         
-        // Calculate total add-on amount including selected options
-        const totalAddOnAmount = availableAddOns.reduce((sum: number, addon: any) => {
-          // Ensure selectedAddOns exists and has the addon
+        // Separate add-ons into included (free) and paid
+        // Included: Simple add-ons with no amount and no options (like "Air Ambulance - Included")
+        const includedAddOns = displayCoverages?.filter((coverage: any) => 
+          coverage.available && 
+          coverage.displayName && 
+          coverage.internalName &&
+          (coverage.amount === null || coverage.amount === 0) &&
+          !coverage.value && // No options
+          !coverage.defaultSelected // Not default selected (which would make it paid)
+        ) || [];
+        
+        // Paid/Optional add-ons: Those with an amount OR with selectable options OR marked as default selected
+        // These are add-ons that the user can customize/select
+        const paidAddOns = displayCoverages?.filter((coverage: any) => 
+          coverage.available && 
+          coverage.displayName && 
+          coverage.internalName &&
+          (
+            (coverage.amount && coverage.amount > 0) || // Has explicit amount
+            (coverage.value && Array.isArray(coverage.value) && coverage.value.length > 0) || // Has selectable options
+            coverage.defaultSelected // Is default selected (user can change it)
+          )
+        ) || [];
+        
+        // For now, we'll use a simple calculation approach
+        // TODO: In production, we should find the matching amountDetail entry 
+        // based on selected add-ons to get the exact premium from the API
+        const totalAddOnAmount = paidAddOns.reduce((sum: number, addon: any) => {
+          // Only calculate if this add-on is selected
           if (!currentPlanState.selectedAddOns || !currentPlanState.selectedAddOns[addon.internalName]) {
             return sum;
           }
@@ -76,21 +96,10 @@ const PlanCardWithSumInsured: React.FC<PlanCardWithSumInsuredProps> = ({
             return sum + addon.amount;
           }
           
-          // If add-on has options, calculate based on selected option
+          // If add-on has options, estimate based on selected option
           if (addon.value && Array.isArray(addon.value) && addon.value.length > 0) {
-            // For now, use the default selected option or first option
             const selectedOption = addon.value.find((opt: any) => opt.defaultSelected) || addon.value[0];
-            
-            // Calculate estimated pricing if not provided
-            const optionAmount = selectedOption.amount || 
-              (() => {
-                const numericValue = parseFloat(selectedOption.displayName);
-                if (!isNaN(numericValue)) {
-                  return Math.round(numericValue * 0.12); // 12% of coverage amount
-                }
-                return 0;
-              })();
-            
+            const optionAmount = selectedOption.amount || 0;
             return sum + optionAmount;
           }
           
@@ -152,7 +161,8 @@ const PlanCardWithSumInsured: React.FC<PlanCardWithSumInsuredProps> = ({
             isInComparison={isInComparison}
             selectedPlansCount={selectedPlansCount}
             maxComparisonPlans={maxComparisonPlans}
-            availableAddOns={availableAddOns}
+            includedAddOns={includedAddOns}
+            paidAddOns={paidAddOns}
             finalPremium={finalPremium}
             totalAddOnAmount={totalAddOnAmount}
             currentPlanState={currentPlanState}
@@ -179,7 +189,8 @@ const SimplePlanCard: React.FC<{
   isInComparison: (planId: number) => boolean;
   selectedPlansCount: number;
   maxComparisonPlans: number;
-  availableAddOns: any[];
+  includedAddOns: any[];
+  paidAddOns: any[];
   finalPremium: number;
   totalAddOnAmount: number;
   currentPlanState: { showAddOns: boolean; selectedAddOns: Record<string, boolean> };
@@ -198,7 +209,8 @@ const SimplePlanCard: React.FC<{
   isInComparison, 
   selectedPlansCount, 
   maxComparisonPlans,
-  availableAddOns,
+  includedAddOns,
+  paidAddOns,
   finalPremium,
   totalAddOnAmount,
   currentPlanState,
@@ -210,7 +222,8 @@ const SimplePlanCard: React.FC<{
   // Use the passed props
   const { showAddOns, selectedAddOns } = currentPlanState;
   const hasMultipleSumInsuredOptions = plan.amountDetail && plan.amountDetail.length > 1;
-  const hasAddOns = availableAddOns.length > 0;
+  const hasPaidAddOns = paidAddOns.length > 0;
+  const hasIncludedAddOns = includedAddOns.length > 0;
   
   // Add-on toggle handlers
   const toggleAddOns = () => {
@@ -387,25 +400,52 @@ const SimplePlanCard: React.FC<{
             </div>
 
             {/* Add-ons Section */}
-            {availableAddOns.length > 0 && (
+            {(hasPaidAddOns || hasIncludedAddOns) && (
               <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-3 mb-3 border border-gray-100">
                 <div className="flex items-center justify-between mb-2">
                   <h6 className="text-xs font-semibold text-gray-700 flex items-center">
                     <Plus className="h-3 w-3 text-blue-500 mr-1" />
-                    Add-ons ({availableAddOns.length} available)
+                    Coverage & Add-ons ({paidAddOns.length + includedAddOns.length} total)
                   </h6>
                   <button
                     onClick={toggleAddOns}
                     className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
                   >
-                    <span>{showAddOns ? 'Hide' : 'Show'} Add-ons</span>
+                    <span>{showAddOns ? 'Hide' : 'Show'} Details</span>
                     {showAddOns ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   </button>
                 </div>
                 
                 {showAddOns && (
-                  <div className="space-y-2">
-                    {availableAddOns.slice(0, 5).map((addon: any, idx: number) => {
+                  <div className="space-y-3">
+                    {/* Included Add-ons (Already part of base plan) */}
+                    {hasIncludedAddOns && (
+                      <div>
+                        <div className="text-xs font-semibold text-green-700 mb-1.5 flex items-center">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Included Benefits ({includedAddOns.length})
+                        </div>
+                        <div className="space-y-1">
+                          {includedAddOns.map((addon: any, idx: number) => (
+                            <div key={idx} className="flex items-center space-x-2 p-1.5 bg-green-50/50 rounded border border-green-100">
+                              <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
+                              <span className="text-xs text-gray-700">{addon.displayName}</span>
+                              <span className="text-xs text-green-600 font-medium ml-auto">Included</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Paid Add-ons (User can select) */}
+                    {hasPaidAddOns && (
+                      <div>
+                        <div className="text-xs font-semibold text-blue-700 mb-1.5 flex items-center">
+                          <Plus className="h-3 w-3 mr-1" />
+                          Optional Add-ons ({paidAddOns.length})
+                        </div>
+                        <div className="space-y-2">
+                          {paidAddOns.map((addon: any, idx: number) => {
                       const hasOptions = addon.value && Array.isArray(addon.value) && addon.value.length > 0;
                       const isSelected = selectedAddOns && selectedAddOns[addon.internalName] || false;
                       
@@ -491,16 +531,9 @@ const SimplePlanCard: React.FC<{
                       );
                     })}
                     
-                    {availableAddOns.length > 5 && (
-                      <div className="text-xs text-gray-500 text-center py-1">
-                        +{availableAddOns.length - 5} more add-ons available in details
+                        </div>
                       </div>
                     )}
-                    
-                    {/* Pricing note */}
-                    <div className="text-xs text-gray-400 text-center py-1 border-t border-gray-100 mt-2">
-                      * Estimated pricing - final premium may vary
-                    </div>
                   </div>
                 )}
                 
