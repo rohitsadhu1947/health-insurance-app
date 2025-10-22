@@ -158,10 +158,24 @@ export default function QuotesPage() {
   }, {} as Record<string, QuotePlan[]>);
 
   // Get unique insurers from ALL plans (not filtered), so pills always show all options
-  // Use companyInternalName ONLY - don't fall back to displayName (which is the plan name)
-  const uniqueInsurers = [...new Set(currentQuote?.quotePlans?.map(p => 
-    p.planData?.companyInternalName || 'Unknown'
-  ).filter(Boolean) || [])].filter((ins) => ins !== 'Unknown');
+  // Extract insurer name from plan data with comprehensive logging
+  const uniqueInsurers = [...new Set(currentQuote?.quotePlans?.map(p => {
+    // The API should provide companyInternalName in planData
+    const insurer = p.planData?.companyInternalName || 'Unknown';
+    
+    if (process.env.NODE_ENV === 'development') {
+      if (insurer === 'Unknown') {
+        console.warn('⚠️ Could not find insurer name for plan:', {
+          planId: p.planId,
+          planDataKeys: p.planData ? Object.keys(p.planData) : [],
+          companyInternalName: p.planData?.companyInternalName,
+          fullPlan: p
+        });
+      }
+    }
+    
+    return insurer;
+  }).filter(Boolean) || [])].filter((ins) => ins !== 'Unknown');
   
   // Calculate insurer count - use the actual data or show 0 to prevent showing wrong count during transitions
   const insurerCount = currentQuote?.quotePlans && currentQuote.quotePlans.length > 0 
@@ -321,7 +335,6 @@ export default function QuotesPage() {
                   <div className="flex flex-wrap gap-2 mt-3">
                     {uniqueInsurers.map((ins) => {
                   // Count plans from ALL plans (not filtered), so count is always accurate
-                  // Use companyInternalName ONLY to match
                   const planCount = currentQuote?.quotePlans?.filter(p => 
                     p.planData?.companyInternalName === ins
                   ).length || 0;
@@ -515,9 +528,7 @@ export default function QuotesPage() {
           <div className="grid gap-6">
             {filteredPlans.map((plan) => {
               // Get insurer name for this plan
-              const insurer = plan.planData?.companyInternalName || 
-                             plan.planData?.displayName || 
-                             'Unknown Insurer';
+              const insurer = plan.planData?.companyInternalName || 'Unknown Insurer';
               
               // Debug logging for each plan
               if (process.env.NODE_ENV === 'development') {
