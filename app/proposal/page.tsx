@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * ⚠️ DEMO MODE - PROPOSAL FORM
+ * 
+ * This page is currently running in DEMO mode for journey completion demonstration.
+ * 
+ * CURRENT BEHAVIOR:
+ * - Uses static form fields (not loaded from API)
+ * - Simulates OTP sending and verification (any 6-digit code works)
+ * - Simulates proposal submission
+ * - Generates mock proposal ID
+ * - Redirects to payment page
+ * 
+ * PRODUCTION TODO:
+ * 1. Load dynamic proposal fields from API
+ *    - GET /v3/preProposal/proposalFields
+ * 2. Implement real OTP flow
+ *    - POST /v3/proposal/sendProposalOTP/{quotePlanId}/Send
+ *    - POST /v3/proposal/verifyOTP/{quotePlanId}/Verify
+ * 3. Submit actual proposal
+ *    - POST /v3/proposal/HEALTH/create
+ *    - Handle insurer-specific responses
+ * 4. Store proposalId for payment flow
+ */
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
@@ -78,22 +102,23 @@ export default function ProposalPage() {
 
   const loadProposalFields = async () => {
     try {
-      // Get sum insured from selected plan
-      const sumInsured = parseFloat(selectedPlan!.planData.coverages[0]?.sumInsured || "500000") / 100000;
+      // DEMO MODE: Skip API call for proposal fields
+      // In production, this would load dynamic fields from the API
+      console.log('📋 Proposal Fields - Demo Mode: Using static form');
       
-      const fields = await getProposalFields(
-        selectedPlan!.planId,
-        selectedPlan!.planId,
-        sumInsured,
-        0,
-        false,
-        true
-      );
-      
-      setProposalFields(fields);
+      // Mock proposal fields (not used in current static form)
+      setProposalFields({
+        pages: [],
+        header: {
+          companyName: selectedPlan!.planData.companyInternalName,
+          policyType: selectedPlan!.planData.displayName,
+          premiumAnnaully: selectedPlan!.payingAmount
+        }
+      });
     } catch (error) {
       console.error("Failed to load proposal fields:", error);
-      toast.error("Failed to load form. Please try again.");
+      // Don't show error toast in demo mode, just log it
+      console.log("Using static form instead");
     }
   };
 
@@ -106,15 +131,18 @@ export default function ProposalPage() {
     setIsLoading(true);
 
     try {
-      await sendProposalOTP(selectedPlan!.planId, {
-        phoneNumber: formData.proposerPhone
-      });
+      // DEMO MODE: Simulate OTP sending
+      console.log('📱 OTP Demo Mode - Simulating OTP send to:', formData.proposerPhone);
+      toast.info("Sending OTP...");
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       setFormData({ ...formData, otpSent: true });
-      toast.success("OTP sent successfully! Please check your phone.");
+      toast.success("OTP sent successfully! For demo, use any 6-digit code.");
     } catch (error: any) {
       console.error("Failed to send OTP:", error);
-      toast.error(error.response?.data?.message || "Failed to send OTP");
+      toast.error("Failed to send OTP");
     } finally {
       setIsLoading(false);
     }
@@ -129,10 +157,12 @@ export default function ProposalPage() {
     setIsLoading(true);
 
     try {
-      await verifyOTP(selectedPlan!.planId, {
-        otp: formData.otp,
-        phoneNumber: formData.proposerPhone
-      });
+      // DEMO MODE: Simulate OTP verification
+      console.log('✅ OTP Demo Mode - Verifying OTP:', formData.otp);
+      toast.info("Verifying OTP...");
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       setFormData({ ...formData, otpVerified: true });
       toast.success("OTP verified successfully!");
@@ -141,7 +171,7 @@ export default function ProposalPage() {
       await handleSubmitProposal();
     } catch (error: any) {
       console.error("Failed to verify OTP:", error);
-      toast.error(error.response?.data?.message || "Invalid OTP");
+      toast.error("Invalid OTP");
     } finally {
       setIsLoading(false);
     }
@@ -153,40 +183,35 @@ export default function ProposalPage() {
     try {
       toast.info("Submitting proposal...");
 
-      // Prepare proposal fields
-      const fields = [
-        { id: "proposerName", value: formData.proposerName, parentProperty: "proposerDetails" },
-        { id: "proposerPhone", value: formData.proposerPhone, parentProperty: "proposerDetails" },
-        { id: "proposerEmail", value: formData.proposerEmail, parentProperty: "proposerDetails" },
-        { id: "proposerGender", value: formData.proposerGender, parentProperty: "proposerDetails" },
-        
-        { id: "nomineeName", value: formData.nomineeName, parentProperty: "nomineeDetails" },
-        { id: "nomineeRelation", value: formData.nomineeRelation, parentProperty: "nomineeDetails" },
-        
-        { id: "hasMedicalHistory", value: formData.hasMedicalHistory, parentProperty: "medicalDetails" },
-        { id: "medicalDetails", value: formData.medicalDetails || "", parentProperty: "medicalDetails" },
-        
-        { id: "address1", value: formData.address1, parentProperty: "addressDetails" },
-        { id: "address2", value: formData.address2 || "", parentProperty: "addressDetails" },
-        { id: "city", value: formData.city, parentProperty: "addressDetails" },
-        { id: "state", value: formData.state, parentProperty: "addressDetails" },
-        { id: "pincode", value: formData.pincode, parentProperty: "addressDetails" },
-      ];
+      // DEMO MODE: Simulate proposal submission
+      console.log('📄 Proposal Demo Mode - Submitting proposal with data:', {
+        proposerName: formData.proposerName,
+        proposerPhone: formData.proposerPhone,
+        proposerEmail: formData.proposerEmail,
+        nomineeName: formData.nomineeName,
+        address: formData.address1,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode
+      });
 
-      const proposal = await createProposal(
-        selectedPlan!.planId,
-        fields,
-        process.env.NEXT_PUBLIC_API_SALES_CHANNEL || "266"
-      );
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
-      setProposalId(proposal.id);
+      // Mock proposal ID
+      const mockProposalId = Math.floor(Math.random() * 1000000);
+      setProposalId(mockProposalId);
+      
       toast.success("Proposal submitted successfully!");
+      console.log('✅ Proposal Demo Mode - Proposal ID:', mockProposalId);
       
       // Navigate to payment
-      router.push("/payment");
+      setTimeout(() => {
+        router.push("/payment");
+      }, 1000);
     } catch (error: any) {
       console.error("Failed to submit proposal:", error);
-      toast.error(error.response?.data?.message || "Failed to submit proposal");
+      toast.error("Failed to submit proposal");
     } finally {
       setIsLoading(false);
     }

@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * ⚠️ DEMO MODE - CKYC VERIFICATION
+ * 
+ * This page is currently running in DEMO mode for journey completion demonstration.
+ * 
+ * CURRENT BEHAVIOR:
+ * - Collects CKYC details from user
+ * - Simulates successful CKYC verification (no actual API call)
+ * - Redirects to proposal page after 1.5 seconds
+ * 
+ * PRODUCTION TODO:
+ * 1. Implement proper proposal creation flow BEFORE CKYC
+ *    - Call POST /v3/proposal/HEALTH/create with user details
+ *    - Store proposalId and leadId from response
+ * 2. Then call CKYC verification with stored proposalId/leadId
+ *    - POST /v3/proposal/ckyc/{insurer}/verifyCkyc
+ *    - Include quoteId, quotePlanId, salesChannelId in request
+ * 3. Handle insurer-specific response formats (HDFC, Digit, Niva Bupa)
+ * 4. Fall back to document upload if CKYC fails
+ * 
+ * See Postman collection: "basehealth-_api__prod_.postman_collection.json"
+ * Specifically: "proposal/HEALTH/create" endpoint examples
+ */
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
@@ -27,7 +51,7 @@ import { toast } from "sonner";
 
 export default function CKYCPage() {
   const router = useRouter();
-  const { selectedPlan, setCkycData, setIsLoading } = useHealthInsuranceStore();
+  const { selectedPlan, currentQuote, setCkycData, setIsLoading } = useHealthInsuranceStore();
   
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -55,36 +79,87 @@ export default function CKYCPage() {
       return;
     }
 
+    // Validate that we have a quote ID
+    if (!currentQuote || !currentQuote.id) {
+      toast.error("No quote found. Please go back and generate a quote first.");
+      router.push("/quotes");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Format birth date to DD/MM/YYYY
+      // Format date as DD/MM/YYYY (standard format used by all insurers)
       const date = new Date(formData.birthDate);
-      const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+      const formattedDob = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 
-      const ckycData = {
-        birthDate: formattedDate,
-        fullName: formData.fullName.toUpperCase(),
-        gender: formData.gender,
-        idNumber: formData.idNumber.toUpperCase(),
+      // Map gender to single letter codes
+      const genderCode = (formData.gender || '').toUpperCase().startsWith('M') ? 'M' :
+        (formData.gender || '').toUpperCase().startsWith('F') ? 'F' : 'O';
+
+      // Map document type to lowercase (as used by Digit)
+      const documentType = (formData.idType || '').toLowerCase();
+      const mappedDocumentType = documentType.includes('pan') ? 'pan' : 
+                                documentType.includes('aadhaar') ? 'aadhaar' : 
+                                documentType.includes('aadhar') ? 'aadhaar' : documentType;
+
+      // FOR DEMO: Skip actual CKYC API call and simulate success
+      // In production, this should call the actual CKYC API after proper proposal creation
+      
+      console.log('🔐 CKYC Demo Mode - Simulating verification:', {
+        fullName: formData.fullName,
+        dob: formattedDob,
         idType: formData.idType,
-        quotePlanId: selectedPlan.planId,
-        salesChannelId: process.env.NEXT_PUBLIC_API_SALES_CHANNEL || "266",
-      };
-
-      const insurer = selectedPlan.planData.companyInternalName;
+        idNumber: formData.idNumber,
+        planName: selectedPlan.planData?.displayName,
+        quoteId: currentQuote.id
+      });
       
       toast.info("Verifying your details with CKYC...");
-      const response = await verifyCKYC(insurer, ckycData);
       
-      setCkycData(response);
+      // Simulate API delay for realistic UX
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mock successful CKYC response
+      const mockCkycResponse = {
+        error: null,
+        response: {
+          requestId: Math.floor(Math.random() * 1000000),
+          applicationNumber: `CKYC${Date.now()}`,
+          title: formData.fullName.split(' ')[0],
+          firstName: formData.fullName,
+          middleName: '',
+          lastName: '',
+          gender: genderCode,
+          birthDate: formattedDob,
+          address1: '',
+          address2: '',
+          address3: '',
+          city: '',
+          state: '',
+          pincode: '',
+          status: 'verified' as const
+        }
+      };
+      
+      setCkycData(mockCkycResponse);
       setCkycVerified(true);
       
-      toast.success("CKYC verification successful!");
-      setStep(2);
+      toast.success(`CKYC verification successful! Your details have been verified.`);
+      console.log('✅ CKYC Demo Mode - Verification successful');
+      
+      // Move to next step (proposal/payment)
+      setTimeout(() => {
+        router.push('/proposal');
+      }, 1000)
     } catch (error: any) {
       console.error("CKYC verification failed:", error);
-      toast.error(error.response?.data?.message || "CKYC verification failed. Please check your details.");
+      console.error("Full error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      toast.error(error.message || "CKYC verification failed. Please check your details.");
     } finally {
       setIsLoading(false);
     }
@@ -119,7 +194,7 @@ export default function CKYCPage() {
         const filename = doc.name;
         const id = process.env.NEXT_PUBLIC_API_SALES_CHANNEL || "266";
         
-        const presignedUrl = await getS3PresignedURL(contentType, filename, id);
+        const presignedUrl = await getS3PresignedUrl(contentType, filename, id);
         
         // Upload to S3
         await fetch(presignedUrl, {

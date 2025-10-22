@@ -16,7 +16,11 @@ import {
 
 // Authentication
 export const login = async (): Promise<string> => {
-  return await apiClient.authenticate();
+  const token = await apiClient.authenticate();
+  if (!token) {
+    throw new Error('Authentication failed');
+  }
+  return token;
 };
 
 // Quote Form Fields
@@ -118,11 +122,83 @@ export const updateQuoteWithAddons = async (
   return response.data;
 };
 
+// Helper function to format add-on selections for API
+export const formatAddOnSelectionsForAPI = (addOnSelections: Record<string, {
+  isSelected: boolean;
+  selectedVariant?: any;
+  amount: number;
+}>): any[] => {
+  return Object.entries(addOnSelections).map(([internalName, selection]) => {
+    const baseCoverage = {
+      internalName,
+      isSelected: selection.isSelected,
+      amount: selection.amount
+    };
+
+    // Add variant information if present
+    if (selection.selectedVariant) {
+      return {
+        ...baseCoverage,
+        value: [selection.selectedVariant]
+      };
+    }
+
+    return baseCoverage;
+  });
+};
+
 // CKYC Verification
-export const verifyCKYC = async (insurer: string, data: CKYCRequest): Promise<CKYCResponse> => {
+export const verifyCKYC = async (insurer: string, data: any): Promise<CKYCResponse> => {
   const client = apiClient.getClient();
-  const response = await client.post(`/v3/proposal/ckyc/${insurer}/verifyCkyc`, data);
-  return response.data;
+  
+  console.log('🔐 verifyCKYC called with:', {
+    insurer,
+    endpoint: `/v3/proposal/ckyc/${insurer}/verifyCkyc`,
+    dataKeys: Object.keys(data),
+    quotePlanId: data.quotePlanId,
+    salesChannelId: data.salesChannelId
+  });
+  
+  try {
+    const response = await client.post(`/v3/proposal/ckyc/${insurer}/verifyCkyc`, data);
+    console.log('✅ CKYC Success:', response.data);
+    return response.data;
+  } catch (err: any) {
+    console.error('❌ CKYC Error Full Details:', {
+      message: err?.message,
+      response: err?.response?.data,
+      status: err?.response?.status,
+      statusText: err?.response?.statusText
+    });
+    
+    const serverMsg = err?.response?.data?.message || err?.message;
+    
+    // Check if this is a "already processed" success case
+    if (serverMsg && serverMsg.includes('payment for this policy has already been successfully processed')) {
+      // Return a success response for already processed cases
+      return {
+        error: null,
+        response: {
+          requestId: 0,
+          applicationNumber: 'ALREADY_PROCESSED',
+          title: '',
+          firstName: '',
+          middleName: '',
+          lastName: '',
+          gender: '',
+          birthDate: '',
+          address1: '',
+          address2: '',
+          address3: '',
+          city: '',
+          state: '',
+          pincode: ''
+        }
+      } as CKYCResponse;
+    }
+    
+    throw new Error(serverMsg || 'CKYC verification failed');
+  }
 };
 
 // Get S3 Presigned URL

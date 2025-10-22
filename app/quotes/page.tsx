@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -26,20 +26,20 @@ import {
   Minus
 } from "lucide-react";
 import { useHealthInsuranceStore } from "@/lib/store";
-import { formatCurrency, formatNumber, INSURERS, SUM_INSURED_OPTIONS } from "@/lib/constants";
+import { formatCurrency, formatNumber, INSURERS } from "@/lib/constants";
 import { QuotePlan } from "@/lib/types";
 import { toast } from "sonner";
 import PlanCardWithSumInsured from "@/components/PlanCardWithSumInsured";
-import { createQuote, pollForQuotes } from "@/lib/api/services";
 
 export default function QuotesPage() {
   const router = useRouter();
-  const { currentQuote, selectedPlans, addToCompare, removeFromCompare, selectPlan, userFormData, isLoading, setIsLoading, setUserFormData, setCurrentQuote } = useHealthInsuranceStore();
+  const { currentQuote, selectedPlans, addToCompare, removeFromCompare, selectPlan } = useHealthInsuranceStore();
   
   const [sortBy, setSortBy] = useState("premium-low");
   const [filterInsurer, setFilterInsurer] = useState("all");
   const [filteredPlans, setFilteredPlans] = useState<QuotePlan[]>([]);
   const [selectedSumInsured, setSelectedSumInsured] = useState('500000'); // Default to 5L
+  const [isDataLoading, setIsDataLoading] = useState(false);
 
 
   useEffect(() => {
@@ -48,19 +48,55 @@ export default function QuotesPage() {
       return;
     }
 
+    setIsDataLoading(true);
+
     // If no quotes, just set empty array (we'll show error message in UI)
     if (!currentQuote.quotePlans || currentQuote.quotePlans.length === 0) {
       setFilteredPlans([]);
+      setIsDataLoading(false);
       return;
     }
 
-    // Apply filters and sorting
-    let plans = [...currentQuote.quotePlans];
+            // Apply filters and sorting
+            let plans = [...currentQuote.quotePlans];
+            
+            // Debug: Log ALL plans from API before any filtering
+            console.log('📊 RAW PLANS FROM API:', {
+              totalPlans: plans.length,
+              plansByInsurer: plans.reduce((acc: any, p) => {
+                const insurer = p.planData?.companyInternalName || 'UNKNOWN';
+                if (!acc[insurer]) acc[insurer] = [];
+                acc[insurer].push({
+                  planId: p.planId,
+                  planName: p.planData?.displayName,
+                  hasAmountDetail: !!(p.amountDetail && p.amountDetail.length > 0),
+                  amountDetailCount: p.amountDetail?.length || 0
+                });
+                return acc;
+              }, {})
+            });
 
-    // Filter by insurer
-    if (filterInsurer !== "all") {
-      plans = plans.filter(p => p.planData.companyInternalName === filterInsurer);
-    }
+            // Filter by insurer
+            if (filterInsurer !== "all") {
+              console.log(`🔍 Filtering by insurer: ${filterInsurer}`);
+              plans = plans.filter(p => p.planData.companyInternalName === filterInsurer);
+              console.log(`After insurer filter: ${plans.length} plans remaining`);
+            }
+
+            // Don't filter by sum insured - show all plans!
+            // The PlanCardWithSumInsured component will handle displaying the correct premium
+            // for the selected sum insured, or show the closest available option
+            
+            console.log('📊 All Plans (No Sum Insured Filtering):', {
+              totalPlans: plans.length,
+              selectedSumInsured,
+              plansByInsurer: plans.reduce((acc: any, p) => {
+                const insurer = p.planData?.companyInternalName || 'UNKNOWN';
+                if (!acc[insurer]) acc[insurer] = 0;
+                acc[insurer]++;
+                return acc;
+              }, {})
+            });
 
     // Sort
     switch (sortBy) {
@@ -75,8 +111,15 @@ export default function QuotesPage() {
         break;
     }
 
-    setFilteredPlans(plans);
-  }, [currentQuote, sortBy, filterInsurer, router]);
+    // Add a small delay to prevent UI jumping
+    const timeoutId = setTimeout(() => {
+      setFilteredPlans(plans);
+      setIsDataLoading(false);
+    }, 100);
+
+    // Cleanup timeout on unmount or dependency change
+    return () => clearTimeout(timeoutId);
+  }, [currentQuote?.id, currentQuote?.quotePlans?.length, sortBy, filterInsurer, router]); // More specific dependencies
 
   const handleCompareToggle = (plan: QuotePlan, checked: boolean) => {
     if (checked) {
@@ -102,130 +145,151 @@ export default function QuotesPage() {
     return selectedPlans.some(p => p.planId === planId);
   };
 
-  const handleSumInsuredChange = async (newSumInsured: string) => {
-    if (!userFormData) {
-      toast.error('Form data not available');
-      return;
-    }
-
-    // Don't proceed if we're already loading
-    if (isLoading) {
-      console.log('Already loading, skipping sum insured change');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      console.log(`🔄 Fetching quotes for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage...`);
-      toast.info(`Fetching quotes for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage...`);
-      
-      // Update form data with new sum insured
-      const updatedFormData = {
-        ...userFormData,
-        sumInsured: [newSumInsured]
-      };
-      
-      // Convert date from YYYY-MM-DD to DD/MM/YYYY
-      const formatDate = (date: string) => {
-        if (!date) return '';
-        const [year, month, day] = date.split('-');
-        return `${day}/${month}/${year}`;
-      };
-
-      // Build fieldData array for production API format (same as main form)
-      const fieldData = [
-        { id: 'fullName', parentProperty: 'basicDetails', value: updatedFormData.fullName },
-        { id: 'phoneNumber', parentProperty: 'basicDetails', value: updatedFormData.phoneNumber },
-        { id: 'emailAddress', parentProperty: 'basicDetails', value: updatedFormData.email },
-        { id: 'pincode', parentProperty: 'communicationAddress', value: updatedFormData.pincode },
-        { id: 'gender', parentProperty: 'proposerDetails', value: 'male' }, // Default
-        { id: 'isIndian', parentProperty: 'proposerDetails', value: 'Yes' },
-        
-        // Self
-        { id: 'self', parentProperty: 'proposerDetails', value: updatedFormData.selfDOB ? 'Yes' : '' },
-        ...(updatedFormData.selfDOB ? [{ id: 'dOBSelf', parentProperty: 'proposerDetails', value: formatDate(updatedFormData.selfDOB) }] : []),
-        
-        // Spouse
-        { id: 'spouse', parentProperty: 'insuredMember1', value: updatedFormData.spouseDOB ? 'Yes' : '' },
-        ...(updatedFormData.spouseDOB ? [{ id: 'dOBSpouse', parentProperty: 'insuredMember1', value: formatDate(updatedFormData.spouseDOB) }] : []),
-        
-        // Father
-        { id: 'father', parentProperty: 'insuredMember2', value: updatedFormData.fatherDOB ? 'Yes' : '' },
-        ...(updatedFormData.fatherDOB ? [{ id: 'dOBFather', parentProperty: 'insuredMember2', value: formatDate(updatedFormData.fatherDOB) }] : []),
-        
-        // Mother
-        { id: 'mother', parentProperty: 'insuredMember3', value: updatedFormData.motherDOB ? 'Yes' : '' },
-        ...(updatedFormData.motherDOB ? [{ id: 'dOBMother', parentProperty: 'insuredMember3', value: formatDate(updatedFormData.motherDOB) }] : []),
-        
-        // Son/Daughter counters
-        { id: 'son', parentProperty: 'insuredMember4', value: updatedFormData.son > 0 ? 'Yes' : '' },
-        { id: 'sonCounter', parentProperty: 'insuredCount', value: updatedFormData.son || 0 },
-        { id: 'daughter', parentProperty: 'insuredMember5', value: updatedFormData.daughter > 0 ? 'Yes' : '' },
-        { id: 'daughterCounter', parentProperty: 'insuredCount', value: updatedFormData.daughter || 0 },
-        
-        // Sum Insured - this is the key difference
-        { id: 'sumInsured', parentProperty: 'policyDetails', value: updatedFormData.sumInsured[0] },
-      ];
-      
-      console.log('📤 Making API call with fieldData:', fieldData);
-      
-      // Fetch new quotes with the selected sum insured
-      const initialQuote = await createQuote(fieldData);
-      
-      console.log('📥 Received initial API response:', initialQuote);
-      
-      if (!initialQuote || !initialQuote.id) {
-        console.log('⚠️ No quote ID received');
-        toast.error('Failed to create quote. Please try again.');
-        return;
-      }
-
-      // Update store with initial quote
-      setCurrentQuote(initialQuote);
-      setUserFormData(updatedFormData);
-      
-      // Start polling for quote results
-      console.log(`🔄 Starting to poll for quote ID: ${initialQuote.id}`);
-      
-      const finalQuote = await pollForQuotes(
-        initialQuote.id,
-        (updatedQuote) => {
-          console.log(`📊 Poll update: ${updatedQuote.quotePlans?.length || 0} plans`);
-          setCurrentQuote(updatedQuote);
-        },
-        20, // Max 20 attempts
-        3000 // Poll every 3 seconds
-      );
-      
-      console.log('✅ Polling complete. Final quote:', finalQuote);
-      
-      // Final update with results
-      setCurrentQuote(finalQuote);
-      
-      if (finalQuote && finalQuote.quotePlans && finalQuote.quotePlans.length > 0) {
-        console.log(`✅ Successfully received ${finalQuote.quotePlans.length} plans`);
-        toast.success(`Found ${finalQuote.quotePlans.length} plans for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage!`);
-      } else {
-        console.log('⚠️ No quotes found after polling');
-        toast.warning(`No quotes available for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage. Try a different amount.`);
-      }
-    } catch (error) {
-      console.error('❌ Error fetching quotes for new sum insured:', error);
-      toast.error(`Failed to fetch quotes for ₹${(parseInt(newSumInsured) / 100000)} Lakh coverage. Please try again.`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Group plans by insurer
+  // Group plans by insurer with better fallback handling
   const plansByInsurer = filteredPlans.reduce((acc, plan) => {
-    const insurer = plan.planData.companyInternalName;
+    // Try multiple possible insurer name fields with fallbacks
+    const insurer = plan.planData?.companyInternalName || 
+                   plan.planData?.displayName || 
+                   'Unknown Insurer';
+    
     if (!acc[insurer]) acc[insurer] = [];
     acc[insurer].push(plan);
     return acc;
   }, {} as Record<string, QuotePlan[]>);
 
-  const uniqueInsurers = [...new Set(filteredPlans.map(p => p.planData.companyInternalName))].filter(Boolean);
+  // Get unique insurers from ALL plans (not filtered), so pills always show all options
+  const uniqueInsurers = [...new Set(currentQuote?.quotePlans?.map(p => 
+    p.planData?.companyInternalName || 
+    p.planData?.displayName || 
+    'Unknown Insurer'
+  ) || [])].filter(Boolean);
+  
+  // Debug: Log insurer information
+  console.log('🔍 Insurer Debug Info:', {
+    filteredPlansCount: filteredPlans.length,
+    uniqueInsurers,
+    samplePlan: filteredPlans[0] ? {
+      companyInternalName: filteredPlans[0].planData?.companyInternalName,
+      displayName: filteredPlans[0].planData?.displayName
+    } : null
+  });
+
+  // Extract all available sum insured options from amountDetail arrays with better edge case handling
+  const availableSumInsuredOptions = React.useMemo(() => {
+    const sumInsuredSet = new Set<number>();
+    
+    // Early return if no quote or plans
+    if (!currentQuote?.quotePlans || currentQuote.quotePlans.length === 0) {
+      return [{
+        value: '500000',
+        label: '₹5 Lakh',
+        isAvailable: true
+      }];
+    }
+    
+    // Debug: Log the current quote structure (only once)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Debugging Quote Structure:', currentQuote);
+    }
+    
+    currentQuote.quotePlans.forEach((plan, planIndex) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📋 Plan ${planIndex + 1}:`, {
+          planId: plan.planId,
+          planName: plan.planData?.displayName,
+          payingAmount: plan.payingAmount,
+          amountDetail: plan.amountDetail,
+          planDataSumInsured: plan.planData?.sumInsured
+        });
+      }
+      
+      // Handle plans with amountDetail array
+      if (plan.amountDetail && Array.isArray(plan.amountDetail) && plan.amountDetail.length > 0) {
+        plan.amountDetail.forEach((detail, detailIndex) => {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`  📊 AmountDetail ${detailIndex + 1}:`, detail);
+          }
+          if (detail && typeof detail.sumInsured === 'number' && detail.sumInsured > 0) {
+            // API returns sumInsured in lakhs, convert to rupees for consistency
+            const sumInsuredInRupees = detail.sumInsured >= 100000 ? detail.sumInsured : detail.sumInsured * 100000;
+            sumInsuredSet.add(sumInsuredInRupees);
+          }
+        });
+      } 
+      // Fallback to planData.sumInsured if amountDetail is missing or empty
+      else if (plan.planData?.sumInsured && typeof plan.planData.sumInsured === 'number' && plan.planData.sumInsured > 0) {
+        // API returns sumInsured in lakhs, convert to rupees for consistency
+        const sumInsuredInRupees = plan.planData.sumInsured >= 100000 ? plan.planData.sumInsured : plan.planData.sumInsured * 100000;
+        sumInsuredSet.add(sumInsuredInRupees);
+      }
+      // Last resort: use payingAmount to infer sum insured (convert lakhs to actual value)
+      else if (plan.payingAmount && typeof plan.payingAmount === 'number') {
+        // This is a fallback - we'll use a reasonable default
+        sumInsuredSet.add(500000); // Default to 5L
+      }
+    });
+    
+    // If no sum insured options found, provide defaults
+    if (sumInsuredSet.size === 0) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⚠️ No sum insured options found, using defaults');
+      }
+      sumInsuredSet.add(500000);
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('💰 Final sum insured options:', Array.from(sumInsuredSet));
+    }
+    
+    return Array.from(sumInsuredSet)
+      .sort((a, b) => a - b)
+      .map(sumInsured => {
+        // Fix the formatting - ensure we're working with proper lakh values
+        const lakhValue = sumInsured >= 100000 ? (sumInsured / 100000) : sumInsured;
+        return {
+          value: sumInsured.toString(),
+          label: `₹${lakhValue} Lakh`,
+          isAvailable: true
+        };
+      });
+  }, [currentQuote?.quotePlans?.length, currentQuote?.id]); // More specific dependencies
+
+  const handleSumInsuredChange = useCallback((newSumInsured: string) => {
+    const newSumInsuredNumber = parseInt(newSumInsured);
+    
+    // Validate that the selected sum insured is available
+    const isAvailable = availableSumInsuredOptions.some(option => 
+      parseInt(option.value) === newSumInsuredNumber
+    );
+    
+    if (!isAvailable) {
+      toast.error('Selected sum insured amount is not available');
+      return;
+    }
+    
+    // Update the selected sum insured
+    setSelectedSumInsured(newSumInsured);
+    
+    // Show success message with additional context
+    const selectedOption = availableSumInsuredOptions.find(option => 
+      parseInt(option.value) === newSumInsuredNumber
+    );
+    
+    const lakhValue = newSumInsuredNumber >= 100000 ? (newSumInsuredNumber / 100000) : newSumInsuredNumber;
+    toast.success(
+      `Updated to ${selectedOption?.label || `₹${lakhValue} Lakh`} coverage`
+    );
+    
+    // Log for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 Sum insured changed:', {
+        from: selectedSumInsured,
+        to: newSumInsured,
+        toNumber: newSumInsuredNumber,
+        availableOptions: availableSumInsuredOptions
+      });
+    }
+  }, [availableSumInsuredOptions, selectedSumInsured]);
 
   // Remove the early return - we want to show mock data when no currentQuote
 
@@ -234,39 +298,58 @@ export default function QuotesPage() {
       <Header />
 
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
+        {/* Premium Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-4xl font-bold mb-2">
-                Available Plans for You
+              <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
+                Find Your Perfect Health Plan
               </h1>
-              <p className="text-muted-foreground mb-3">
-                Found <span className="font-semibold text-primary">{filteredPlans.length} plans</span> from <span className="font-semibold text-primary">{uniqueInsurers.length}</span> insurer{uniqueInsurers.length > 1 ? 's' : ''}
+              <p className="text-base text-gray-600 mb-3">
+                Compare <span className="font-bold text-blue-600">{filteredPlans.length} premium plans</span> from <span className="font-bold text-blue-600">{uniqueInsurers.length}</span> trusted insurers
               </p>
               {/* Insurer Pills */}
               <div className="flex flex-wrap gap-2 mt-3">
-                {uniqueInsurers.map((ins) => (
-                  <div 
-                    key={ins}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border-2 shadow-sm"
-                    style={{ borderColor: INSURERS[ins as keyof typeof INSURERS]?.color || '#ccc' }}
-                  >
-                    {INSURERS[ins as keyof typeof INSURERS]?.logo && (
-                      <img 
-                        src={INSURERS[ins as keyof typeof INSURERS].logo} 
-                        alt={ins}
-                        className="h-4 w-4 object-contain"
-                      />
-                    )}
-                    <span className="text-xs font-semibold" style={{ color: INSURERS[ins as keyof typeof INSURERS]?.color }}>
-                      {INSURERS[ins as keyof typeof INSURERS]?.name || ins}
-                    </span>
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                      {plansByInsurer[ins]?.length}
-                    </Badge>
-                  </div>
-                ))}
+                {uniqueInsurers.map((ins) => {
+                  // Count plans from ALL plans (not filtered), so count is always accurate
+                  const planCount = currentQuote?.quotePlans?.filter(p => 
+                    (p.planData?.companyInternalName || p.planData?.displayName || 'Unknown Insurer') === ins
+                  ).length || 0;
+                  
+                  return (
+                    <button
+                      key={ins}
+                      onClick={() => setFilterInsurer(filterInsurer === ins ? "all" : ins)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full border shadow-lg transition-all duration-300 hover:scale-105 ${
+                        filterInsurer === ins 
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 border-blue-500 text-white shadow-blue-200' 
+                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300'
+                      }`}
+                    >
+                      {INSURERS[ins as keyof typeof INSURERS]?.logo && (
+                        <img 
+                          src={INSURERS[ins as keyof typeof INSURERS].logo} 
+                          alt={ins}
+                          className="h-4 w-4 object-contain"
+                        />
+                      )}
+                      <span className="text-xs font-semibold">
+                        {(() => {
+                          const fullName = INSURERS[ins as keyof typeof INSURERS]?.name || ins;
+                          // Clean up insurer names - remove "Health Insurance" and other suffixes
+                          return fullName
+                            .replace(/ Health Insurance$/i, '')
+                            .replace(/ Insurance$/i, '')
+                            .replace(/ General$/i, '')
+                            .replace(/ Life$/i, '');
+                        })()}
+                      </span>
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                        {planCount}
+                      </Badge>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -325,29 +408,24 @@ export default function QuotesPage() {
                   <span className="text-sm text-muted-foreground">Sum Insured:</span>
                   <Select 
                     value={selectedSumInsured} 
-                    onValueChange={(value) => {
-                      setSelectedSumInsured(value);
-                      handleSumInsuredChange(value);
-                    }}
-                    disabled={isLoading}
+                    onValueChange={handleSumInsuredChange}
                   >
                     <SelectTrigger className="w-48">
-                      <SelectValue placeholder={isLoading ? "Loading..." : "Select amount"} />
+                      <SelectValue placeholder="Select amount" />
                     </SelectTrigger>
                     <SelectContent>
-                      {SUM_INSURED_OPTIONS.slice(1, 7).map(option => (
+                      {availableSumInsuredOptions.map(option => (
                         <SelectItem key={option.value} value={option.value}>
-                          {option.label}
+                          <div className="flex items-center justify-between w-full">
+                            <span>{option.label}</span>
+                            {option.isAvailable && (
+                              <span className="text-xs text-green-600 ml-2">✓</span>
+                            )}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {isLoading && (
-                    <div className="flex items-center space-x-1 text-xs text-blue-600">
-                      <div className="animate-spin h-3 w-3 border border-blue-600 border-t-transparent rounded-full"></div>
-                      <span>Loading...</span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="ml-auto">
@@ -360,9 +438,20 @@ export default function QuotesPage() {
           </Card>
         </div>
 
+        {/* Loading State */}
+        {isDataLoading && (
+          <Card className="p-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Loading Plans...</h3>
+            <p className="text-muted-foreground">Please wait while we fetch the latest quotes</p>
+          </Card>
+        )}
+
         {/* Plans List */}
-        <div className="space-y-6">
-          {filteredPlans.length === 0 && currentQuote?.companyErrorMessage && (
+        <div className={`space-y-6 transition-opacity duration-300 min-h-[400px] ${isDataLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+          {!isDataLoading && filteredPlans.length === 0 && currentQuote?.companyErrorMessage && (
             <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-lg">
               <CardContent className="pt-8 pb-8">
                 <div className="text-center space-y-6">
@@ -405,54 +494,39 @@ export default function QuotesPage() {
             </Card>
           )}
           
-          {Object.entries(plansByInsurer).map(([insurer, plans]) => (
-            <div key={insurer} className="space-y-4">
-              {/* Insurer Header */}
-              <Card className="border-2 bg-gradient-to-r from-white to-gray-50 shadow-md">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-white shadow-lg border-2" style={{ borderColor: INSURERS[insurer as keyof typeof INSURERS]?.color || '#ccc' }}>
-                        {INSURERS[insurer as keyof typeof INSURERS]?.logo ? (
-                          <img 
-                            src={INSURERS[insurer as keyof typeof INSURERS].logo} 
-                            alt={INSURERS[insurer as keyof typeof INSURERS]?.name || insurer}
-                            className="h-12 w-12 object-contain"
-                          />
-                        ) : (
-                          <Shield className="h-8 w-8" style={{ color: INSURERS[insurer as keyof typeof INSURERS]?.color }} />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="text-2xl font-bold" style={{ color: INSURERS[insurer as keyof typeof INSURERS]?.color }}>
-                          {INSURERS[insurer as keyof typeof INSURERS]?.name || insurer}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          <span className="font-semibold text-primary">{plans.length}</span> plan{plans.length > 1 ? 's' : ''} available • 
-                          Starting from <span className="font-semibold text-green-600">{formatCurrency(Math.min(...plans.map(p => p.payingAmount)))}</span>/year
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-sm px-4 py-2" style={{ borderColor: INSURERS[insurer as keyof typeof INSURERS]?.color, color: INSURERS[insurer as keyof typeof INSURERS]?.color }}>
-                      ✓ Available
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="grid gap-4">
+          {/* Display all plans as individual cards without insurer grouping */}
+          <div className="grid gap-6">
+            {filteredPlans.map((plan) => {
+              // Get insurer name for this plan
+              const insurer = plan.planData?.companyInternalName || 
+                             plan.planData?.displayName || 
+                             'Unknown Insurer';
+              
+              // Debug logging for each plan
+              if (process.env.NODE_ENV === 'development') {
+                console.log('📋 Rendering plan card:', {
+                  planId: plan.planId,
+                  planName: plan.planData?.displayName,
+                  selectedSumInsured,
+                  hasAmountDetail: plan.amountDetail && plan.amountDetail.length > 0
+                });
+              }
+              
+              return (
                 <PlanCardWithSumInsured
-                  plans={plans}
+                  key={`${plan.planId}-${selectedSumInsured}`} // Force re-render when sum insured changes
+                  plans={[plan]} // Pass single plan as array
                   insurer={insurer}
+                  selectedSumInsured={selectedSumInsured}
                   onCompareToggle={handleCompareToggle}
                   onBuyNow={handleBuyNow}
                   isInComparison={isInComparison}
                   selectedPlansCount={selectedPlans.length}
                   maxComparisonPlans={3}
                 />
-              </div>
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
 
         {filteredPlans.length === 0 && (

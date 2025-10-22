@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Quote, QuotePlan, CKYCResponse } from './types';
+import { Quote, QuotePlan, CKYCResponse, AddOnSelection } from './types';
 
 interface HealthInsuranceStore {
   // Authentication
@@ -20,6 +20,11 @@ interface HealthInsuranceStore {
   // Selected Plan for Purchase
   selectedPlan: QuotePlan | null;
   selectPlan: (plan: QuotePlan) => void;
+  
+  // Add-on Selections
+  addOnSelections: Record<number, AddOnSelection>; // planId -> AddOnSelection
+  updateAddOnSelection: (planId: number, selection: AddOnSelection) => void;
+  getAddOnSelection: (planId: number) => AddOnSelection | null;
   
   // CKYC Data
   ckycData: CKYCResponse | null;
@@ -73,6 +78,17 @@ export const useHealthInsuranceStore = create<HealthInsuranceStore>((set) => ({
   selectedPlan: null,
   selectPlan: (plan) => set({ selectedPlan: plan }),
 
+  // Add-on Selections
+  addOnSelections: {},
+  updateAddOnSelection: (planId, selection) =>
+    set((state) => ({
+      addOnSelections: { ...state.addOnSelections, [planId]: selection }
+    })),
+  getAddOnSelection: (planId) => {
+    const state = useHealthInsuranceStore.getState();
+    return state.addOnSelections[planId] || null;
+  },
+
   // CKYC Data
   ckycData: null,
   setCkycData: (data) => set({ ckycData: data }),
@@ -95,6 +111,7 @@ export const useHealthInsuranceStore = create<HealthInsuranceStore>((set) => ({
       currentQuote: null,
       selectedPlans: [],
       selectedPlan: null,
+      addOnSelections: {},
       ckycData: null,
       proposalId: null,
       userFormData: {},

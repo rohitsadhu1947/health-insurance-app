@@ -1,5 +1,26 @@
 "use client";
 
+/**
+ * ⚠️ DEMO MODE - PAYMENT PROCESSING
+ * 
+ * This page is currently running in DEMO mode for journey completion demonstration.
+ * 
+ * CURRENT BEHAVIOR:
+ * - Shows payment options (Card, UPI, Net Banking)
+ * - Simulates payment processing (2-second delay)
+ * - No actual payment gateway integration
+ * - Redirects to success page
+ * - GST removed (0% GST for health insurance in India)
+ * 
+ * PRODUCTION TODO:
+ * 1. Implement real payment gateway integration
+ *    - POST /v3/proposal/HEALTH/payment
+ *    - Handle payment gateway redirect URL
+ * 2. Implement payment success/failure callbacks
+ * 3. Handle payment status verification
+ * 4. Store payment transaction details
+ */
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
@@ -34,6 +55,15 @@ export default function PaymentPage() {
   
   const [paymentMode, setPaymentMode] = useState("card");
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false);
+  const [cardDetails, setCardDetails] = useState({
+    cardNumber: "",
+    cardName: "",
+    expiryMonth: "",
+    expiryYear: "",
+    cvv: ""
+  });
+  const [upiId, setUpiId] = useState("");
 
   if (!selectedPlan || !proposalId) {
     router.push("/quotes");
@@ -41,55 +71,61 @@ export default function PaymentPage() {
   }
 
   const insurer = selectedPlan.planData.companyInternalName;
-  const gst = selectedPlan.payingAmount * 0.18; // 18% GST
-  const totalAmount = selectedPlan.payingAmount + gst;
+  // Health insurance has 0% GST in India (as of 2024)
+  const totalAmount = selectedPlan.payingAmount;
 
-  const handlePayment = async () => {
+  const handleInitiatePayment = () => {
+    // Open payment gateway modal
+    setShowPaymentGateway(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    // Validate payment details based on mode
+    if (paymentMode === "card") {
+      if (!cardDetails.cardNumber || !cardDetails.cardName || !cardDetails.expiryMonth || !cardDetails.expiryYear || !cardDetails.cvv) {
+        toast.error("Please fill in all card details");
+        return;
+      }
+      if (cardDetails.cardNumber.length < 16) {
+        toast.error("Please enter a valid 16-digit card number");
+        return;
+      }
+    } else if (paymentMode === "upi") {
+      if (!upiId) {
+        toast.error("Please enter your UPI ID");
+        return;
+      }
+    }
+
     setProcessingPayment(true);
-    setIsLoading(true);
 
     try {
+      // DEMO MODE: Simulate payment processing
+      console.log('💳 Payment Demo Mode - Processing payment:', {
+        proposalId,
+        paymentMode,
+        amount: totalAmount,
+        plan: selectedPlan.planData.displayName
+      });
+
       toast.info("Processing payment...");
 
-      const paymentData = {
-        proposalId: proposalId.toString(),
-        paymentData: {
-          modes: [
-            {
-              details: {
-                paymentMode: paymentMode,
-              },
-              selected: "Yes",
-              displayName: "Payment Gateway",
-              internalName: "FORM",
-            },
-          ],
-        },
-      };
+      // Simulate payment gateway processing delay
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
-      const response = await processPayment(paymentData);
+      toast.success("Payment successful!");
+      console.log('✅ Payment Demo Mode - Payment completed successfully');
       
-      if (response.status === "PAYMENT_REDIRECTION" && response.paymentData?.modes[0]?.details?.formUrl) {
-        toast.success("Redirecting to payment gateway...");
-        
-        // In production, redirect to payment gateway
-        // window.location.href = response.paymentData.modes[0].details.formUrl;
-        
-        // For demo purposes, simulate successful payment
-        setTimeout(() => {
-          toast.success("Payment successful!");
-          router.push("/success");
-        }, 2000);
-      } else {
-        toast.success("Payment processed successfully!");
+      // Close modal and redirect to success page
+      setShowPaymentGateway(false);
+      setTimeout(() => {
         router.push("/success");
-      }
+      }, 500);
     } catch (error: any) {
       console.error("Payment failed:", error);
-      toast.error(error.response?.data?.message || "Payment failed. Please try again.");
+      toast.error("Payment failed. Please try again.");
     } finally {
       setProcessingPayment(false);
-      setIsLoading(false);
     }
   };
 
@@ -235,12 +271,15 @@ export default function PaymentPage() {
                   {/* Price Breakdown */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Base Premium</span>
+                      <span className="text-muted-foreground">Annual Premium</span>
                       <span className="font-semibold">{formatCurrency(selectedPlan.payingAmount)}</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">GST (18%)</span>
-                      <span className="font-semibold">{formatCurrency(gst)}</span>
+                    
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 my-2">
+                      <p className="text-xs text-green-700 flex items-center space-x-1">
+                        <CheckCircle className="h-3 w-3" />
+                        <span>Health insurance has 0% GST in India</span>
+                      </p>
                     </div>
                     
                     <Separator />
@@ -254,10 +293,10 @@ export default function PaymentPage() {
                   <Button
                     size="lg"
                     className="w-full gradient-blue text-white"
-                    onClick={handlePayment}
+                    onClick={handleInitiatePayment}
                     disabled={processingPayment}
                   >
-                    {processingPayment ? "Processing..." : `Pay ${formatCurrency(totalAmount)}`}
+                    Proceed to Payment
                   </Button>
 
                   <p className="text-xs text-center text-muted-foreground">
@@ -269,6 +308,257 @@ export default function PaymentPage() {
           </div>
         </div>
       </div>
+
+      {/* Payment Gateway Modal */}
+      {showPaymentGateway && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Gateway Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Lock className="h-6 w-6" />
+                  <div>
+                    <h2 className="text-xl font-bold">Secure Payment Gateway</h2>
+                    <p className="text-sm text-blue-100">Powered by SecurePay™</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => !processingPayment && setShowPaymentGateway(false)}
+                  className="text-white hover:text-blue-100 transition-colors"
+                  disabled={processingPayment}
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="mt-4 bg-white/20 backdrop-blur-sm rounded-lg p-3 flex items-center justify-between">
+                <span className="text-sm">Amount to Pay:</span>
+                <span className="text-2xl font-bold">{formatCurrency(totalAmount)}</span>
+              </div>
+            </div>
+
+            {/* Payment Method Tabs */}
+            <div className="border-b">
+              <div className="flex">
+                {PAYMENT_MODES.map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setPaymentMode(mode.id)}
+                    disabled={processingPayment}
+                    className={`flex-1 py-4 px-6 text-sm font-medium transition-colors ${
+                      paymentMode === mode.id
+                        ? 'border-b-2 border-primary text-primary bg-primary/5'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center space-x-2">
+                      <mode.icon className="h-4 w-4" />
+                      <span>{mode.label}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Payment Forms */}
+            <div className="p-6">
+              {/* Card Payment Form */}
+              {paymentMode === "card" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="cardNumber">Card Number</Label>
+                    <Input
+                      id="cardNumber"
+                      placeholder="1234 5678 9012 3456"
+                      value={cardDetails.cardNumber}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 16);
+                        setCardDetails({ ...cardDetails, cardNumber: value });
+                      }}
+                      maxLength={16}
+                      disabled={processingPayment}
+                      className="text-lg font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="cardName">Cardholder Name</Label>
+                    <Input
+                      id="cardName"
+                      placeholder="Name as on card"
+                      value={cardDetails.cardName}
+                      onChange={(e) => setCardDetails({ ...cardDetails, cardName: e.target.value.toUpperCase() })}
+                      disabled={processingPayment}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="expiryMonth">Expiry Month</Label>
+                      <Input
+                        id="expiryMonth"
+                        placeholder="MM"
+                        value={cardDetails.expiryMonth}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 2);
+                          if (parseInt(value) <= 12 || value === '') {
+                            setCardDetails({ ...cardDetails, expiryMonth: value });
+                          }
+                        }}
+                        maxLength={2}
+                        disabled={processingPayment}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="expiryYear">Expiry Year</Label>
+                      <Input
+                        id="expiryYear"
+                        placeholder="YY"
+                        value={cardDetails.expiryYear}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 2);
+                          setCardDetails({ ...cardDetails, expiryYear: value });
+                        }}
+                        maxLength={2}
+                        disabled={processingPayment}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cvv">CVV</Label>
+                      <Input
+                        id="cvv"
+                        type="password"
+                        placeholder="123"
+                        value={cardDetails.cvv}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+                          setCardDetails({ ...cardDetails, cvv: value });
+                        }}
+                        maxLength={3}
+                        disabled={processingPayment}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800">
+                    <p className="font-semibold mb-1">🔒 Demo Mode - For Testing Only</p>
+                    <p>Enter any 16-digit number. No real payment will be processed.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* UPI Payment Form */}
+              {paymentMode === "upi" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="upiId">UPI ID</Label>
+                    <Input
+                      id="upiId"
+                      placeholder="yourname@paytm"
+                      value={upiId}
+                      onChange={(e) => setUpiId(e.target.value)}
+                      disabled={processingPayment}
+                    />
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-blue-800 mb-3">Popular UPI Apps:</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['Google Pay', 'PhonePe', 'Paytm'].map((app) => (
+                        <button
+                          key={app}
+                          disabled={processingPayment}
+                          className="p-2 bg-white rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors text-sm"
+                        >
+                          {app}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800">
+                    <p className="font-semibold mb-1">🔒 Demo Mode - For Testing Only</p>
+                    <p>Enter any UPI ID. No real payment will be processed.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Net Banking Form */}
+              {paymentMode === "netbanking" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="bank">Select Your Bank</Label>
+                    <select
+                      id="bank"
+                      disabled={processingPayment}
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                    >
+                      <option>State Bank of India</option>
+                      <option>HDFC Bank</option>
+                      <option>ICICI Bank</option>
+                      <option>Axis Bank</option>
+                      <option>Kotak Mahindra Bank</option>
+                      <option>Punjab National Bank</option>
+                    </select>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                    <p className="font-semibold mb-2">How it works:</p>
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Select your bank</li>
+                      <li>You'll be redirected to your bank's website</li>
+                      <li>Login with your internet banking credentials</li>
+                      <li>Authorize the payment</li>
+                    </ol>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800">
+                    <p className="font-semibold mb-1">🔒 Demo Mode - For Testing Only</p>
+                    <p>No actual bank redirect will occur. Payment simulation only.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Button */}
+              <div className="mt-6 space-y-3">
+                <Button
+                  size="lg"
+                  className="w-full gradient-blue text-white text-lg"
+                  onClick={handleConfirmPayment}
+                  disabled={processingPayment}
+                >
+                  {processingPayment ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                      <span>Processing Payment...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center space-x-2">
+                      <Lock className="h-5 w-5" />
+                      <span>Pay {formatCurrency(totalAmount)}</span>
+                    </div>
+                  )}
+                </Button>
+
+                <div className="flex items-center justify-center space-x-4 text-xs text-muted-foreground">
+                  <div className="flex items-center space-x-1">
+                    <Lock className="h-3 w-3" />
+                    <span>256-bit SSL</span>
+                  </div>
+                  <div>•</div>
+                  <div className="flex items-center space-x-1">
+                    <Shield className="h-3 w-3" />
+                    <span>PCI DSS Compliant</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

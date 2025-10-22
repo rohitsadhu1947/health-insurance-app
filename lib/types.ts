@@ -18,6 +18,8 @@ export interface AmountDetail {
   premiumMonthly: string | number;
   premiumAnnually: string | number;
   coverages?: Coverage[];
+  // Enhanced to handle all API response variations
+  payingAmount?: number;
 }
 
 export interface QuotePlan {
@@ -35,6 +37,16 @@ export interface QuotePlan {
   };
 }
 
+// Base add-on option interface
+export interface AddOnOption {
+  label?: string;
+  displayName: string;
+  internalName: string;
+  defaultSelected: boolean;
+  value?: any;
+}
+
+// Enhanced coverage/add-on interface
 export interface Coverage {
   sumInsured?: string;
   coveragesValue?: AddOn[];
@@ -47,6 +59,20 @@ export interface Coverage {
   isSelected?: boolean;
   readOnly?: boolean;
   defaultSelected?: boolean;
+  // Enhanced fields for better add-on handling
+  defaultMsg?: string;
+  events?: AddOnEvent[];
+}
+
+// Add-on event for handling dependencies between add-ons
+export interface AddOnEvent {
+  type: 'select' | 'unselect';
+  actions: AddOnAction[];
+}
+
+export interface AddOnAction {
+  enableList?: string[];
+  disableList?: string[];
 }
 
 export interface AddOn {
@@ -58,6 +84,16 @@ export interface AddOn {
   isSelected: boolean;
   readOnly: boolean;
   defaultSelected: boolean;
+  // Enhanced fields
+  defaultMsg?: string;
+  events?: AddOnEvent[];
+}
+
+// Coverage with variants (for complex add-ons with sub-options)
+export interface CoverageWithVariants extends Coverage {
+  value?: AddOnOption[] | AddOnOption[][];
+  hasVariants?: boolean;
+  selectedVariant?: AddOnOption;
 }
 
 export interface Quote {
@@ -93,13 +129,16 @@ export interface PincodeInfo {
 }
 
 export interface CKYCRequest {
-  birthDate: string;
-  fullName: string;
-  gender: string;
-  idNumber: string;
-  idType: string;
+  dob: string; // DD-MM-YYYY
+  fullName: string; // Uppercase
+  gender: 'M' | 'F' | 'O';
+  document: {
+    type: string; // e.g., PAN, AADHAAR
+    number: string;
+  };
   quotePlanId: number;
-  salesChannelId: string;
+  quoteId?: number | string;
+  salesChannelId: number;
 }
 
 export interface CKYCResponse {
@@ -214,5 +253,73 @@ export interface Insurer {
   name: string;
   displayName: string;
   products: QuotePlan[];
+}
+
+// Add-on selection state for dynamic premium calculation
+export interface AddOnSelection {
+  planId: number;
+  sumInsured: number;
+  selectedAddOns: Record<string, {
+    isSelected: boolean;
+    selectedVariant?: AddOnOption;
+    amount: number;
+  }>;
+  totalAddOnAmount: number;
+  basePremium: number;
+  totalPremium: number;
+}
+
+// Enhanced quote plan with add-on management
+export interface EnhancedQuotePlan extends QuotePlan {
+  selectedAddOns?: AddOnSelection;
+  availableSumInsuredOptions?: number[];
+}
+
+// CKYC Verification Types
+export interface CKYCRequest {
+  dob: string;
+  fullName: string;
+  gender: 'M' | 'F' | 'O';
+  document: {
+    type: string;
+    number: string;
+  };
+  quotePlanId: number;
+  quoteId?: number | string;
+  salesChannelId: number;
+}
+
+export interface CKYCResponse {
+  error: any; // Error object from API
+  response: {
+    requestId?: number;
+    applicationNumber?: string;
+    title?: string;
+    firstName?: string;
+    middleName?: string;
+    lastName?: string;
+    gender?: string;
+    birthDate?: string;
+    address1?: string;
+    address2?: string;
+    address3?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    message?: string;
+    status?: 'verified' | 'already_processed' | 'failed';
+    // HDFC format fields
+    data?: {
+      kyc_id?: string;
+      ckycNumber?: string;
+      iskycVerified?: number;
+      status?: string;
+    };
+    // Digit format fields
+    status?: string;
+    // Niva Bupa format fields
+    Status?: string;
+    CkycMsg?: string;
+  };
 }
 

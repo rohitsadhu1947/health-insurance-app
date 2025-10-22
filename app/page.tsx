@@ -110,8 +110,12 @@ export default function HomePage() {
         { id: 'daughterCounter', parentProperty: 'insuredCount', value: formData.daughter || 0 },
       ];
       
+      // Log the fieldData being sent for debugging
+      console.log('📤 Main form fieldData:', JSON.stringify(fieldData, null, 2));
+      
       // Create quote and get initial response
       const initialQuote = await createQuote(fieldData);
+      console.log('📥 Main form initialQuote:', JSON.stringify(initialQuote, null, 2));
       setCurrentQuote(initialQuote);
       
       // Navigate to quotes page
@@ -426,10 +430,23 @@ export default function HomePage() {
                 <Button 
                   type="submit" 
                   size="lg" 
-                  className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 group"
+                  className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 group relative overflow-hidden"
+                  disabled={isLoading}
                 >
-                  Get Free Quotes 
-                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  <span className="relative z-10 flex items-center justify-center">
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        Getting Quotes...
+                      </>
+                    ) : (
+                      <>
+                        Get Free Quotes 
+                        <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </Button>
 
                 <p className="text-xs text-center text-gray-500">
