@@ -311,12 +311,13 @@ export default function QuotesPage() {
                 Find Your Perfect Health Plan
               </h1>
               {/* Only show plan/insurer counts and pills when data is fully loaded */}
-              {!isDataLoading && insurerCount > 0 ? (
+              {!isDataLoading && filteredPlans.length > 0 ? (
                 <>
                   <p className="text-base text-gray-600 mb-3">
                     Compare <span className="font-bold text-blue-600">{filteredPlans.length} premium plans</span> from <span className="font-bold text-blue-600">{insurerCount}</span> trusted insurers
                   </p>
-                  {/* Insurer Pills */}
+                  {/* Insurer Pills - Only show if we have valid insurer data */}
+                  {uniqueInsurers.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">
                     {uniqueInsurers.map((ins) => {
                   // Count plans from ALL plans (not filtered), so count is always accurate
@@ -360,6 +361,7 @@ export default function QuotesPage() {
                   );
                 })}
                   </div>
+                  )}
                 </>
               ) : (
                 <p className="text-base text-gray-600 mb-3">
