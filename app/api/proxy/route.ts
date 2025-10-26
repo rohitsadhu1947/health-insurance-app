@@ -9,6 +9,17 @@ export async function POST(request: NextRequest) {
     console.log('Method:', method);
     console.log('Has Token:', !!token);
     
+    // Check for required environment variables
+    if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
+      console.error('❌ Missing NEXT_PUBLIC_API_BASE_URL environment variable');
+      return NextResponse.json(
+        { error: 'Server configuration error: Missing API base URL' },
+        { status: 500 }
+      );
+    }
+    
+    console.log('API Base URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+    
     // Log the request data for quote creation
     if (endpoint.includes('/v3/getQuote/HEALTH') && method === 'POST' && data) {
       console.log('📋 REQUEST BODY (fieldData):');
@@ -159,6 +170,15 @@ export async function GET(request: NextRequest) {
     
     if (!endpoint) {
       return NextResponse.json({ error: 'Endpoint is required' }, { status: 400 });
+    }
+
+    // Check for required environment variables
+    if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
+      console.error('❌ Missing NEXT_PUBLIC_API_BASE_URL environment variable');
+      return NextResponse.json(
+        { error: 'Server configuration error: Missing API base URL' },
+        { status: 500 }
+      );
     }
 
     const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}${endpoint}`;

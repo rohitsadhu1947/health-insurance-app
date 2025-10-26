@@ -1,272 +1,168 @@
-# HealthCare Plus - Health Insurance Platform
+# Health Insurance App
 
-A modern, production-ready health insurance comparison and purchase platform built with Next.js 14, TypeScript, and Tailwind CSS.
+A modern health insurance comparison platform built with Next.js, React, and TypeScript.
 
-## 🚀 Features
+## 🚀 Quick Start
 
-- **Multi-Insurer Quotes**: Compare 20+ plans from 6 top insurers
-- **Real-time Quote Generation**: Instant quotes based on user input
-- **CKYC Verification**: Secure Central KYC verification
-- **Document Upload**: Seamless KYC document upload to S3
-- **Multi-step Proposal Form**: Intuitive form with progress tracking
-- **OTP Verification**: Mobile number verification
-- **Payment Gateway Integration**: Secure payment processing
-- **Responsive Design**: Works perfectly on all devices
-- **Beautiful UI**: Modern design with animations and transitions
+### Local Development
 
-## 🏢 Supported Insurers
-
-1. **CARE Health Insurance**
-2. **Cigna TTK**
-3. **Digit Insurance**
-4. **HDFC ERGO**
-5. **Niva Bupa**
-6. **Reliance Health Insurance**
-
-## 🛠️ Tech Stack
-
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **UI Components**: shadcn/ui
-- **State Management**: Zustand
-- **Forms**: React Hook Form + Zod
-- **HTTP Client**: Axios
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-- **Notifications**: Sonner
-
-## 📦 Installation
-
-1. **Clone the repository**:
+1. **Clone the repository**
    ```bash
+   git clone <repository-url>
    cd health-insurance-app
    ```
 
-2. **Install dependencies**:
+2. **Install dependencies**
    ```bash
    npm install
    ```
 
-3. **Set up environment variables**:
-   
-   The `.env.local` file is already configured with UAT credentials:
-   ```env
-   NEXT_PUBLIC_API_BASE_URL=https://api-uat.ensuredit.com
-   NEXT_PUBLIC_API_USER_ID=ReligareUser
-   NEXT_PUBLIC_API_PASSWORD=religare@123456
-   NEXT_PUBLIC_API_SALES_CHANNEL=266
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env.local
    ```
+   Edit `.env.local` with your API credentials.
 
-4. **Run the development server**:
+4. **Start the development server**
    ```bash
    npm run dev
    ```
 
-5. **Open your browser**:
-   Navigate to [http://localhost:3000](http://localhost:3000)
+5. **Open your browser**
+   Navigate to [http://localhost:3001](http://localhost:3001)
 
-## 🔄 Complete User Journey
+## 🌐 Production Deployment (Vercel)
 
-### 1. Home Page (`/`)
-- Hero section with trust badges
-- Quote request form
-- Family member selection
-- Pincode verification
+### Environment Variables Setup
 
-### 2. Quotes Page (`/quotes`)
-- Display 20+ plans from 6 insurers
-- Filter by insurer and sort options
-- Plan comparison (up to 3 plans)
-- Quick buy option
+To deploy to Vercel, you need to configure the following environment variables in your Vercel dashboard:
 
-### 3. Compare Page (`/compare`)
-- Side-by-side plan comparison
-- Feature-by-feature analysis
-- Premium breakdown
-- Direct purchase from comparison
+#### Required Environment Variables:
 
-### 4. CKYC Verification (`/ckyc`)
-- Personal details verification
-- Central KYC integration
-- Document upload (PAN, Aadhaar, etc.)
-- Secure S3 upload
+1. **API Configuration**
+   ```
+   NEXT_PUBLIC_API_BASE_URL=https://api-prod.ensuredit.com
+   NEXT_PUBLIC_API_ORIGIN=https://api.retire100.com/
+   ```
 
-### 5. Proposal Form (`/proposal`)
-- Multi-step wizard (5 steps):
-  1. Proposer Details
-  2. Nominee Details
-  3. Medical History
-  4. Address Details
-  5. OTP Verification
-- Progress tracking
-- Auto-save functionality
+2. **API Credentials**
+   ```
+   NEXT_PUBLIC_API_USER_ID=Test
+   NEXT_PUBLIC_API_PASSWORD=Test@2024
+   NEXT_PUBLIC_API_SALES_CHANNEL=2830
+   ```
 
-### 6. Payment (`/payment`)
-- Multiple payment modes:
-  - Credit/Debit Card
-  - UPI
-  - Net Banking
-- Order summary
-- Secure payment gateway
-- GST calculation
+3. **Optional: Religare Credentials**
+   ```
+   NEXT_PUBLIC_RELIGARE_USER_ID=ReligareUser
+   NEXT_PUBLIC_RELIGARE_PASSWORD=religare@123456
+   NEXT_PUBLIC_RELIGARE_SALES_CHANNEL_ID=266
+   ```
 
-### 7. Success Page (`/success`)
-- Policy confirmation
-- Policy number generation
-- Download policy document
-- Email confirmation
-- Customer support details
+4. **Optional: SSS Credentials**
+   ```
+   NEXT_PUBLIC_SSS_USER_ID=SSSUser
+   NEXT_PUBLIC_SSS_PASSWORD=sss@123456
+   NEXT_PUBLIC_SSS_SALES_CHANNEL_ID=223
+   ```
 
-## 🔐 API Integration
+### How to Add Environment Variables in Vercel:
 
-The application integrates with the following APIs:
+1. **Go to your Vercel dashboard**
+   - Visit [vercel.com/dashboard](https://vercel.com/dashboard)
+   - Select your project
 
-1. **Authentication**: `/v3/login/verifyPassword`
-2. **Quote Form Fields**: `/v3/preQuote/quoteFields`
-3. **Pincode Verification**: `/v3/preProposal/pincodeInfo`
-4. **Create Quote**: `/v3/getQuote/HEALTH`
-5. **Quote Filters**: `/v3/preQuote/quoteFilters`
-6. **CKYC Verification**: `/v3/proposal/ckyc/{INSURER}/verifyCkyc`
-7. **S3 Upload URL**: `/v3/utilities/getS3PresignedURL`
-8. **Upload KYC Docs**: `/v3/proposal/ckyc/{INSURER}/uploadKycDocs`
-9. **Proposal Fields**: `/v3/preProposal/proposalFields`
-10. **Send OTP**: `/v3/proposal/sendProposalOTP/{quotePlanId}/Send`
-11. **Verify OTP**: `/v3/proposal/sendProposalOTP/{quotePlanId}/Verify`
-12. **Create Proposal**: `/v3/proposal/HEALTH/create`
-13. **Payment**: `/v3/proposal/HEALTH/payment`
+2. **Navigate to Settings**
+   - Click on your project
+   - Go to "Settings" tab
+   - Click on "Environment Variables" in the sidebar
+
+3. **Add each variable**
+   - Click "Add New"
+   - Enter the variable name (e.g., `NEXT_PUBLIC_API_BASE_URL`)
+   - Enter the variable value (e.g., `https://api-prod.ensuredit.com`)
+   - Select "Production" environment
+   - Click "Save"
+
+4. **Redeploy**
+   - After adding all environment variables, trigger a new deployment
+   - You can do this by pushing a new commit or manually redeploying from the Vercel dashboard
+
+### 🔧 Troubleshooting
+
+#### Common Issues:
+
+1. **500 Internal Server Error**
+   - **Cause**: Missing environment variables
+   - **Solution**: Ensure all required environment variables are set in Vercel
+
+2. **API requests failing**
+   - **Cause**: Incorrect API base URL or credentials
+   - **Solution**: Verify environment variables match your API configuration
+
+3. **CORS errors**
+   - **Cause**: Incorrect origin header
+   - **Solution**: Check `NEXT_PUBLIC_API_ORIGIN` is set correctly
+
+#### Debug Steps:
+
+1. **Check Vercel Function Logs**
+   - Go to your Vercel dashboard
+   - Click on "Functions" tab
+   - Check the logs for `/api/proxy` function
+
+2. **Verify Environment Variables**
+   - In Vercel dashboard, go to Settings > Environment Variables
+   - Ensure all variables are present and have correct values
+
+3. **Test API Endpoint**
+   - Use the browser's Network tab to see the exact error
+   - Check if the API URL is being constructed correctly
 
 ## 📁 Project Structure
 
 ```
 health-insurance-app/
 ├── app/                    # Next.js app directory
-│   ├── page.tsx           # Home page
-│   ├── quotes/            # Quotes listing
-│   ├── compare/           # Plan comparison
-│   ├── ckyc/              # CKYC verification
-│   ├── proposal/          # Proposal form
-│   ├── payment/           # Payment page
-│   ├── success/           # Success page
-│   ├── layout.tsx         # Root layout
-│   └── globals.css        # Global styles
-├── components/            # React components
-│   ├── ui/               # shadcn/ui components
-│   ├── Header.tsx        # Header component
-│   └── LoadingOverlay.tsx # Loading component
-├── lib/                   # Utility libraries
-│   ├── api/              # API client & services
-│   │   ├── client.ts     # Axios client
-│   │   └── services.ts   # API functions
-│   ├── types.ts          # TypeScript types
-│   ├── store.ts          # Zustand store
-│   ├── constants.ts      # App constants
-│   └── utils.ts          # Utility functions
-└── public/               # Static assets
+│   ├── api/               # API routes
+│   ├── dashboard/         # Customer portal pages
+│   ├── login/            # Login page
+│   └── page.tsx          # Home page
+├── components/           # React components
+├── lib/                 # Utilities and types
+├── .env.example        # Environment variables template
+└── README.md           # This file
 ```
 
-## 🎨 Key Components
+## 🛠️ Technologies Used
 
-### API Client (`lib/api/client.ts`)
-- Axios instance with interceptors
-- Automatic authentication
-- Token refresh on 401
-- Error handling
+- **Frontend**: Next.js 15, React 18, TypeScript
+- **Styling**: Tailwind CSS, Shadcn/ui
+- **State Management**: Zustand
+- **API**: Next.js API Routes
+- **Deployment**: Vercel
 
-### State Management (`lib/store.ts`)
-- Quote data
-- Selected plans
-- CKYC data
-- Proposal ID
-- User form data
-- Loading states
+## 📝 Features
 
-### Services (`lib/api/services.ts`)
-- All API integrations
-- Type-safe requests
-- Error handling
+- ✅ Health insurance quote comparison
+- ✅ Family member selection (self, spouse, parents, children)
+- ✅ Add-on customization
+- ✅ CKYC verification
+- ✅ Policy proposal submission
+- ✅ Payment processing
+- ✅ Customer portal with dashboard
+- ✅ Policy management
+- ✅ Claims tracking
+- ✅ Support ticket system
 
-## 🚀 Deployment
+## 🤝 Contributing
 
-### Vercel (Recommended)
-
-1. **Push to GitHub**:
-   ```bash
-   git add .
-   git commit -m "Initial commit"
-   git push origin main
-   ```
-
-2. **Deploy to Vercel**:
-   - Go to [vercel.com](https://vercel.com)
-   - Import your repository
-   - Configure environment variables
-   - Deploy
-
-### Other Platforms
-
-The app can be deployed to:
-- **Netlify**
-- **AWS Amplify**
-- **Google Cloud Run**
-- **Docker** (create Dockerfile)
-
-## 🔒 Security Considerations
-
-⚠️ **Important**: The current `.env.local` contains UAT credentials. For production:
-
-1. **Move credentials to backend**: Create API routes to proxy requests
-2. **Use environment variables**: Store in Vercel/hosting platform
-3. **Implement rate limiting**: Prevent API abuse
-4. **Add CORS protection**: Restrict API access
-5. **Enable CSP**: Content Security Policy headers
-
-## 📝 Environment Variables
-
-```env
-# API Configuration
-NEXT_PUBLIC_API_BASE_URL=https://api-uat.ensuredit.com
-
-# Credentials (Move to backend in production)
-NEXT_PUBLIC_API_USER_ID=ReligareUser
-NEXT_PUBLIC_API_PASSWORD=religare@123456
-NEXT_PUBLIC_API_SALES_CHANNEL=266
-```
-
-## 🧪 Testing
-
-Run the development server and test:
-
-1. **Quote Generation**: Fill form on home page
-2. **Plan Comparison**: Select plans and compare
-3. **CKYC Flow**: Enter PAN details (test with mock data)
-4. **Proposal**: Complete multi-step form
-5. **Payment**: Test payment flow (mock in UAT)
-
-## 🐛 Known Limitations
-
-1. **Payment Gateway**: Currently simulated (integrate actual gateway in production)
-2. **Policy Download**: Mock implementation (integrate with insurer APIs)
-3. **Add-ons Modal**: Pending implementation (can add if needed)
-4. **Real-time Premium**: Backend support needed for live calculations
-
-## 📞 Support
-
-For issues or questions:
-- Email: support@healthcareplus.com
-- Phone: 1800-123-4567
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## 📄 License
 
-This project is built for demonstration purposes using live UAT APIs.
-
-## 🙏 Acknowledgments
-
-- **shadcn/ui** for beautiful components
-- **Vercel** for Next.js framework
-- **Tailwind CSS** for styling
-- **Lucide** for icons
-
----
-
-**Built with ❤️ for your client demo** 🚀
+This project is licensed under the MIT License.
