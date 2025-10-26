@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ArrowRight, Shield, Users, TrendingUp, Heart, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -183,12 +184,14 @@ export default function HomePage() {
               </div>
             </div>
             <nav className="hidden md:flex items-center space-x-8">
-              <a href="#" className="text-gray-700 hover:text-blue-600 transition font-medium text-sm">Products</a>
-              <a href="#" className="text-gray-700 hover:text-blue-600 transition font-medium text-sm">Claims</a>
-              <a href="#" className="text-gray-700 hover:text-blue-600 transition font-medium text-sm">Support</a>
+              <Link href="/products" className="text-gray-700 hover:text-blue-600 transition font-medium text-sm">Products</Link>
+              <Link href="/claims" className="text-gray-700 hover:text-blue-600 transition font-medium text-sm">Claims</Link>
+              <Link href="/support" className="text-gray-700 hover:text-blue-600 transition font-medium text-sm">Support</Link>
               <div className="flex items-center space-x-3 ml-4">
                 <span className="text-sm text-gray-600">📞 1800-123-4567</span>
-                <Button variant="outline" size="sm" className="font-medium">Login</Button>
+                <Link href="/login">
+                  <Button variant="outline" size="sm" className="font-medium">Login</Button>
+                </Link>
               </div>
             </nav>
           </div>

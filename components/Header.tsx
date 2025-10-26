@@ -53,12 +53,14 @@ export function Header() {
               <Phone className="h-4 w-4" />
               <span className="font-medium">1800-123-4567</span>
             </a>
-            <Button 
-              size="sm" 
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg transition-all duration-300"
-            >
-              Login
-            </Button>
+            <Link href="/login">
+              <Button 
+                size="sm" 
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg transition-all duration-300"
+              >
+                Login
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
