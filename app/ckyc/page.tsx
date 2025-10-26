@@ -295,7 +295,6 @@ export default function CKYCPage() {
                       onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                       placeholder="Enter your full name"
                       required
-                      className="text-lg"
                     />
                     <p className="text-xs text-muted-foreground">Enter name exactly as it appears on your ID proof</p>
                   </div>
@@ -309,7 +308,6 @@ export default function CKYCPage() {
                         value={formData.birthDate}
                         onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
                         required
-                        className="text-lg"
                       />
                     </div>
 
@@ -345,7 +343,7 @@ export default function CKYCPage() {
                         value={formData.idType}
                         onValueChange={(value) => setFormData({ ...formData, idType: value })}
                       >
-                        <SelectTrigger className="text-lg">
+                        <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -365,7 +363,7 @@ export default function CKYCPage() {
                         onChange={(e) => setFormData({ ...formData, idNumber: e.target.value.toUpperCase() })}
                         placeholder={formData.idType === "PAN" ? "ABCDE1234F" : "Enter ID number"}
                         required
-                        className="text-lg font-mono"
+                        className="font-mono"
                         maxLength={formData.idType === "PAN" ? 10 : 20}
                       />
                     </div>

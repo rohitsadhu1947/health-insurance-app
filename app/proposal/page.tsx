@@ -407,7 +407,6 @@ export default function ProposalPage() {
                       value={formData.nomineeName}
                       onChange={(e) => setFormData({ ...formData, nomineeName: e.target.value })}
                       placeholder="Enter nominee's full name"
-                      className="text-lg"
                     />
                   </div>
 
@@ -418,7 +417,7 @@ export default function ProposalPage() {
                         value={formData.nomineeRelation}
                         onValueChange={(value) => setFormData({ ...formData, nomineeRelation: value })}
                       >
-                        <SelectTrigger className="text-lg">
+                        <SelectTrigger>
                           <SelectValue placeholder="Select relationship" />
                         </SelectTrigger>
                         <SelectContent>
@@ -441,7 +440,6 @@ export default function ProposalPage() {
                         value={formData.nomineeAge}
                         onChange={(e) => setFormData({ ...formData, nomineeAge: e.target.value })}
                         placeholder="Enter age"
-                        className="text-lg"
                       />
                     </div>
                   </div>
@@ -484,7 +482,6 @@ export default function ProposalPage() {
                         onChange={(e) => setFormData({ ...formData, medicalDetails: e.target.value })}
                         placeholder="Describe your medical condition(s) and ongoing treatment..."
                         rows={5}
-                        className="text-lg"
                       />
                       <p className="text-xs text-muted-foreground">
                         Please be accurate. Any misrepresentation may lead to claim rejection.
@@ -510,7 +507,6 @@ export default function ProposalPage() {
                       value={formData.address1}
                       onChange={(e) => setFormData({ ...formData, address1: e.target.value })}
                       placeholder="House/Flat No., Building Name"
-                      className="text-lg"
                     />
                   </div>
 
@@ -521,7 +517,6 @@ export default function ProposalPage() {
                       value={formData.address2}
                       onChange={(e) => setFormData({ ...formData, address2: e.target.value })}
                       placeholder="Street, Locality"
-                      className="text-lg"
                     />
                   </div>
 
