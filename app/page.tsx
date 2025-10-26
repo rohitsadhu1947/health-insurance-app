@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Shield, Users, TrendingUp, Heart } from 'lucide-react';
+import { ArrowRight, Shield, Users, TrendingUp, Heart, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
+    gender: '', // Male or Female
     phoneNumber: '',
     pincode: '',
     email: '',
@@ -37,7 +38,7 @@ export default function HomePage() {
     e.preventDefault();
     
     // Validate required fields
-    if (!formData.fullName || !formData.pincode) {
+    if (!formData.fullName || !formData.gender || !formData.pincode) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -277,6 +278,88 @@ export default function HomePage() {
                     className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20"
                     required
                   />
+                </div>
+
+                {/* Gender Selection */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold text-gray-700">Select Gender *</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Male Card */}
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, gender: 'Male' })}
+                      className={`group relative overflow-hidden rounded-xl border-2 transition-all duration-300 ${
+                        formData.gender === 'Male'
+                          ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg shadow-blue-200/50'
+                          : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
+                      }`}
+                    >
+                      <div className="p-6 flex flex-col items-center space-y-3">
+                        {/* Icon Circle */}
+                        <div className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${
+                          formData.gender === 'Male'
+                            ? 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg'
+                            : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-blue-100 group-hover:to-indigo-100'
+                        }`}>
+                          <User className={`h-10 w-10 ${
+                            formData.gender === 'Male' ? 'text-white' : 'text-gray-600 group-hover:text-blue-600'
+                          }`} />
+                          {formData.gender === 'Male' && (
+                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        {/* Label */}
+                        <div className="text-center">
+                          <p className={`text-lg font-bold ${
+                            formData.gender === 'Male' ? 'text-blue-700' : 'text-gray-700'
+                          }`}>Male</p>
+                          <p className="text-xs text-gray-500 mt-1">Select if you're male</p>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Female Card */}
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, gender: 'Female' })}
+                      className={`group relative overflow-hidden rounded-xl border-2 transition-all duration-300 ${
+                        formData.gender === 'Female'
+                          ? 'border-pink-500 bg-gradient-to-br from-pink-50 to-rose-50 shadow-lg shadow-pink-200/50'
+                          : 'border-gray-200 bg-white hover:border-pink-300 hover:shadow-md'
+                      }`}
+                    >
+                      <div className="p-6 flex flex-col items-center space-y-3">
+                        {/* Icon Circle */}
+                        <div className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${
+                          formData.gender === 'Female'
+                            ? 'bg-gradient-to-br from-pink-500 to-rose-600 shadow-lg'
+                            : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-pink-100 group-hover:to-rose-100'
+                        }`}>
+                          <User className={`h-10 w-10 ${
+                            formData.gender === 'Female' ? 'text-white' : 'text-gray-600 group-hover:text-pink-600'
+                          }`} />
+                          {formData.gender === 'Female' && (
+                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        {/* Label */}
+                        <div className="text-center">
+                          <p className={`text-lg font-bold ${
+                            formData.gender === 'Female' ? 'text-pink-700' : 'text-gray-700'
+                          }`}>Female</p>
+                          <p className="text-xs text-gray-500 mt-1">Select if you're female</p>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
