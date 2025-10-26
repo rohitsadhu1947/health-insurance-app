@@ -500,6 +500,61 @@ export default function HomePage() {
                         />
                       )}
                     </div>
+
+                    {/* Children Section */}
+                    <div className="pt-3 border-t border-gray-200">
+                      <Label className="text-xs font-semibold text-gray-700 mb-2 block">Children (if any)</Label>
+                      
+                      {/* Sons */}
+                      <div className="flex items-center justify-between mb-2">
+                        <Label htmlFor="son" className="text-sm">Number of Sons</Label>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, son: Math.max(0, formData.son - 1) })}
+                            className="w-8 h-8 rounded-lg border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-gray-600 font-semibold transition-colors"
+                          >
+                            −
+                          </button>
+                          <span className="w-8 text-center font-semibold text-gray-900">{formData.son}</span>
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, son: Math.min(4, formData.son + 1) })}
+                            className="w-8 h-8 rounded-lg border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-gray-600 font-semibold transition-colors"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Daughters */}
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="daughter" className="text-sm">Number of Daughters</Label>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, daughter: Math.max(0, formData.daughter - 1) })}
+                            className="w-8 h-8 rounded-lg border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-gray-600 font-semibold transition-colors"
+                          >
+                            −
+                          </button>
+                          <span className="w-8 text-center font-semibold text-gray-900">{formData.daughter}</span>
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, daughter: Math.min(4, formData.daughter + 1) })}
+                            className="w-8 h-8 rounded-lg border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-gray-600 font-semibold transition-colors"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {(formData.son > 0 || formData.daughter > 0) && (
+                        <p className="text-xs text-blue-600 mt-2 bg-blue-50 p-2 rounded">
+                          ℹ️ Children under 25 years can be covered under family floater plans
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
