@@ -48,8 +48,13 @@ export async function POST(request: NextRequest) {
       console.log('Full Data:', JSON.stringify(data, null, 2));
     }
     
-    // Clean up origin header too
-    const originHeader = (process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/').trim();
+    // Clean up origin header too (handle case where user copied entire line like "NEXT_PUBLIC_API_ORIGIN=https://...")
+    let originHeaderRaw = process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/';
+    // Remove variable name if accidentally included
+    if (originHeaderRaw.includes('=')) {
+      originHeaderRaw = originHeaderRaw.split('=').slice(1).join('=').trim();
+    }
+    const originHeader = originHeaderRaw.trim();
     
     const apiUrl = `${apiBaseUrl}${endpoint}`;
     
@@ -244,7 +249,13 @@ export async function GET(request: NextRequest) {
     }
 
     const apiUrl = `${apiBaseUrl}${endpoint}`;
-    const originHeader = (process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/').trim();
+    // Clean up origin header (handle case where user copied entire line like "NEXT_PUBLIC_API_ORIGIN=https://...")
+    let originHeaderRaw = process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/';
+    // Remove variable name if accidentally included
+    if (originHeaderRaw.includes('=')) {
+      originHeaderRaw = originHeaderRaw.split('=').slice(1).join('=').trim();
+    }
+    const originHeader = originHeaderRaw.trim();
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',

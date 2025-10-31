@@ -24,7 +24,13 @@ export async function POST(request: NextRequest) {
     }
     
     const apiUrl = `${apiBaseUrl}/v3/login/verifyPassword`;
-    const originHeader = (process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/').trim();
+    // Clean up origin header (handle case where user copied entire line like "NEXT_PUBLIC_API_ORIGIN=https://...")
+    let originHeaderRaw = process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/';
+    // Remove variable name if accidentally included
+    if (originHeaderRaw.includes('=')) {
+      originHeaderRaw = originHeaderRaw.split('=').slice(1).join('=').trim();
+    }
+    const originHeader = originHeaderRaw.trim();
     
     console.log('\n=== 🔐 AUTH REQUEST ===');
     console.log('API URL:', apiUrl);

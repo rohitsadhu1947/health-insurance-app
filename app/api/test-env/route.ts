@@ -17,8 +17,14 @@ export async function GET(request: NextRequest) {
       NEXT_PUBLIC_API_ORIGIN: {
         exists: !!process.env.NEXT_PUBLIC_API_ORIGIN,
         value: process.env.NEXT_PUBLIC_API_ORIGIN || 'MISSING',
-        cleaned: process.env.NEXT_PUBLIC_API_ORIGIN ? 
-          process.env.NEXT_PUBLIC_API_ORIGIN.trim() : 'N/A'
+        cleaned: process.env.NEXT_PUBLIC_API_ORIGIN ? (() => {
+          let raw = process.env.NEXT_PUBLIC_API_ORIGIN;
+          // Remove variable name if accidentally included
+          if (raw.includes('=')) {
+            raw = raw.split('=').slice(1).join('=').trim();
+          }
+          return raw.trim();
+        })() : 'N/A'
       },
       NEXT_PUBLIC_API_USER_ID: {
         exists: !!process.env.NEXT_PUBLIC_API_USER_ID,
@@ -41,7 +47,12 @@ export async function GET(request: NextRequest) {
         envCheck.NEXT_PUBLIC_API_PASSWORD.exists) {
       try {
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL!.trim().replace(/^@+/, '').replace(/\/$/, '');
-        const originHeader = (process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/').trim();
+        // Clean up origin header (handle case where user copied entire line)
+        let originHeaderRaw = process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/';
+        if (originHeaderRaw.includes('=')) {
+          originHeaderRaw = originHeaderRaw.split('=').slice(1).join('=').trim();
+        }
+        const originHeader = originHeaderRaw.trim();
         const authUrl = `${apiBaseUrl}/v3/login/verifyPassword`;
         
         const authResponse = await fetch(authUrl, {
