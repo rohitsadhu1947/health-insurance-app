@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       responseData = { error: text || 'Unknown error', status: response.status };
     }
     
-    // Enhanced 403 error logging
+    // Enhanced 403 error logging and return detailed error to client
     if (response.status === 403) {
       console.error('\n❌❌❌ 403 FORBIDDEN ERROR ❌❌❌');
       console.error('Request URL:', apiUrl);
@@ -98,6 +98,17 @@ export async function POST(request: NextRequest) {
       console.error('Origin Header (raw):', process.env.NEXT_PUBLIC_API_ORIGIN);
       console.error('Origin Header (cleaned):', originHeader);
       console.error('❌❌❌ END 403 ERROR LOG ❌❌❌\n');
+      
+      // Return more informative error to client
+      return NextResponse.json(
+        {
+          error: 'Forbidden: API request was rejected',
+          details: responseData || 'No additional details',
+          message: responseData?.message || responseData?.error || 'The API rejected this request. Please check authentication and environment variables.',
+          status: 403
+        },
+        { status: 403 }
+      );
     }
     
     // Log CKYC responses
