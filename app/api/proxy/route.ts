@@ -49,6 +49,9 @@ export async function POST(request: NextRequest) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    console.log('🌐 Making request to:', apiUrl);
+    console.log('📤 Headers being sent:', JSON.stringify(headers, null, 2));
+    
     const response = await fetch(apiUrl, {
       method,
       headers,
@@ -56,8 +59,31 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('📥 API Status:', response.status);
+    console.log('📥 Response Headers:', Object.fromEntries(response.headers.entries()));
     
-    const responseData = await response.json();
+    let responseData;
+    try {
+      responseData = await response.json();
+    } catch (error) {
+      // If response is not JSON, get text
+      const text = await response.text();
+      console.error('❌ Non-JSON response:', text);
+      responseData = { error: text || 'Unknown error', status: response.status };
+    }
+    
+    // Enhanced 403 error logging
+    if (response.status === 403) {
+      console.error('\n❌❌❌ 403 FORBIDDEN ERROR ❌❌❌');
+      console.error('Request URL:', apiUrl);
+      console.error('Request Headers:', JSON.stringify(headers, null, 2));
+      console.error('Request Body:', data ? JSON.stringify(data, null, 2) : 'No body');
+      console.error('Response Status:', response.status);
+      console.error('Response Data:', JSON.stringify(responseData, null, 2));
+      console.error('Has Token:', !!token);
+      console.error('API Base URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+      console.error('Origin Header:', originHeader);
+      console.error('❌❌❌ END 403 ERROR LOG ❌❌❌\n');
+    }
     
     // Log CKYC responses
     if (endpoint.includes('/ckyc/')) {
