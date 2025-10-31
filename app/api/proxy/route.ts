@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     console.log('Method:', method);
     console.log('Has Token:', !!token);
     
-    // Check for required environment variables
+    // Check for required environment variables and clean them up
     if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
       console.error('❌ Missing NEXT_PUBLIC_API_BASE_URL environment variable');
       return NextResponse.json(
@@ -18,7 +18,18 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log('API Base URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+    // Clean up API base URL (remove leading @ or other invalid characters)
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL.trim().replace(/^@+/, '').replace(/\/$/, '');
+    if (!apiBaseUrl.startsWith('http://') && !apiBaseUrl.startsWith('https://')) {
+      console.error('❌ Invalid NEXT_PUBLIC_API_BASE_URL format:', apiBaseUrl);
+      return NextResponse.json(
+        { error: 'Server configuration error: Invalid API base URL format' },
+        { status: 500 }
+      );
+    }
+    
+    console.log('API Base URL (raw):', process.env.NEXT_PUBLIC_API_BASE_URL);
+    console.log('API Base URL (cleaned):', apiBaseUrl);
     
     // Log the request data for quote creation
     if (endpoint.includes('/v3/getQuote/HEALTH') && method === 'POST' && data) {
@@ -30,15 +41,17 @@ export async function POST(request: NextRequest) {
     if (endpoint.includes('/ckyc/') && method === 'POST' && data) {
       console.log('\n=== 🔐 CKYC REQUEST ===');
       console.log('Endpoint:', endpoint);
-      console.log('Full URL will be:', `${process.env.NEXT_PUBLIC_API_BASE_URL}${endpoint}`);
+      console.log('Full URL will be:', `${apiBaseUrl}${endpoint}`);
       console.log('Data keys:', Object.keys(data));
       console.log('quoteId in data:', data.quoteId);
       console.log('quotePlanId in data:', data.quotePlanId);
       console.log('Full Data:', JSON.stringify(data, null, 2));
     }
     
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}${endpoint}`;
-    const originHeader = process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/';
+    // Clean up origin header too
+    const originHeader = (process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/').trim();
+    
+    const apiUrl = `${apiBaseUrl}${endpoint}`;
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -80,8 +93,10 @@ export async function POST(request: NextRequest) {
       console.error('Response Status:', response.status);
       console.error('Response Data:', JSON.stringify(responseData, null, 2));
       console.error('Has Token:', !!token);
-      console.error('API Base URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
-      console.error('Origin Header:', originHeader);
+      console.error('API Base URL (raw):', process.env.NEXT_PUBLIC_API_BASE_URL);
+      console.error('API Base URL (cleaned):', apiBaseUrl);
+      console.error('Origin Header (raw):', process.env.NEXT_PUBLIC_API_ORIGIN);
+      console.error('Origin Header (cleaned):', originHeader);
       console.error('❌❌❌ END 403 ERROR LOG ❌❌❌\n');
     }
     
@@ -207,8 +222,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}${endpoint}`;
-    const originHeader = process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/';
+    // Clean up API base URL (remove leading @ or other invalid characters)
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL.trim().replace(/^@+/, '').replace(/\/$/, '');
+    if (!apiBaseUrl.startsWith('http://') && !apiBaseUrl.startsWith('https://')) {
+      console.error('❌ Invalid NEXT_PUBLIC_API_BASE_URL format:', apiBaseUrl);
+      return NextResponse.json(
+        { error: 'Server configuration error: Invalid API base URL format' },
+        { status: 500 }
+      );
+    }
+
+    const apiUrl = `${apiBaseUrl}${endpoint}`;
+    const originHeader = (process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/').trim();
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',

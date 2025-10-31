@@ -13,8 +13,18 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/v3/login/verifyPassword`;
-    const originHeader = process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/';
+    // Clean up API base URL (remove leading @ or other invalid characters)
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL.trim().replace(/^@+/, '').replace(/\/$/, '');
+    if (!apiBaseUrl.startsWith('http://') && !apiBaseUrl.startsWith('https://')) {
+      console.error('❌ Invalid NEXT_PUBLIC_API_BASE_URL format:', apiBaseUrl);
+      return NextResponse.json(
+        { error: 'Server configuration error: Invalid API base URL format' },
+        { status: 500 }
+      );
+    }
+    
+    const apiUrl = `${apiBaseUrl}/v3/login/verifyPassword`;
+    const originHeader = (process.env.NEXT_PUBLIC_API_ORIGIN || 'https://api.retire100.com/').trim();
     
     console.log('\n=== 🔐 AUTH REQUEST ===');
     console.log('API URL:', apiUrl);
@@ -23,8 +33,10 @@ export async function POST(request: NextRequest) {
     console.log('Env vars check:', {
       hasBaseUrl: !!process.env.NEXT_PUBLIC_API_BASE_URL,
       hasOrigin: !!process.env.NEXT_PUBLIC_API_ORIGIN,
-      baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
-      origin: process.env.NEXT_PUBLIC_API_ORIGIN
+      baseUrlRaw: process.env.NEXT_PUBLIC_API_BASE_URL,
+      baseUrlCleaned: apiBaseUrl,
+      originRaw: process.env.NEXT_PUBLIC_API_ORIGIN,
+      originCleaned: originHeader
     });
     
     const headers = {
@@ -57,8 +69,10 @@ export async function POST(request: NextRequest) {
       console.error('Response Status:', response.status);
       console.error('Response Data:', JSON.stringify(data, null, 2));
       console.error('Environment Variables:', {
-        NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
-        NEXT_PUBLIC_API_ORIGIN: process.env.NEXT_PUBLIC_API_ORIGIN,
+        NEXT_PUBLIC_API_BASE_URL_raw: process.env.NEXT_PUBLIC_API_BASE_URL,
+        NEXT_PUBLIC_API_BASE_URL_cleaned: apiBaseUrl,
+        NEXT_PUBLIC_API_ORIGIN_raw: process.env.NEXT_PUBLIC_API_ORIGIN,
+        NEXT_PUBLIC_API_ORIGIN_cleaned: originHeader,
         NEXT_PUBLIC_API_USER_ID: process.env.NEXT_PUBLIC_API_USER_ID ? '***SET***' : 'MISSING',
         NEXT_PUBLIC_API_PASSWORD: process.env.NEXT_PUBLIC_API_PASSWORD ? '***SET***' : 'MISSING',
       });
